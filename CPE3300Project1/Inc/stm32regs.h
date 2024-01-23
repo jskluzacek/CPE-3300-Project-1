@@ -13,6 +13,12 @@
 // CPU clock frequency
 #define F_CPU 16000000UL
 
+// Register Adresses
+#define RCC_ADR 	0x4002 3800
+#define GPIOB_ADR 	0x4002 0000
+#define GPIOC_ADR 	0x4002 0800
+
+
 /***** STM32 REGISTER ACCESS *****/
 //RCC
 typedef struct {
