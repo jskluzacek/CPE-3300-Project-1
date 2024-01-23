@@ -6,15 +6,21 @@
  * @brief          : TODO
  *****************************************************************************/
 #include "led.h"
+#include "delay.h"
 
 int main(void)
 {
 	/*** INITIALIZE API's ***/
 	led_init();
 
-	led_cycle();
-
-	for(;;); // forever loop
+	for(;;) {
+		led_on(0b0000000001);
+		delay_ms(250);
+		led_on(0b0000000010);
+		delay_ms(250);
+		led_on(0b0000000100);
+		delay_ms(250);
+	}
 
 	return 0;
 }

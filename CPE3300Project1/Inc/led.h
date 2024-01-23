@@ -14,6 +14,7 @@
 #define PB12TO15 0x3C0
 
 void led_init(void);
+void led_on(int number);
 void led_cycle(void);
 
 #endif /* led.h */

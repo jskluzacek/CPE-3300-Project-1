@@ -37,20 +37,21 @@ void led_on(int number) {
 	gpiob->ODR = (temp<<5);					// shift final value into place in ODR
 }
 
-/**
- * led_cycle:
- * Cycles one led left to right repeatedly
- */
-void led_cycle(void) {
-	int i = 1;
-	while (i < (1<<9)) {
-		led_on(i);
-		delay_ms(100);
-		i = i<<1;
-	}
-	while (i > 1) {
-		led_on(i);
-		delay_ms(100);
-		i = i>>1;
-	}
-}
+//TODO Fix if needed
+///**
+// * led_cycle:
+// * Cycles one led left to right repeatedly
+// */
+//void led_cycle(void) {
+//	int i = 1;
+//	while (i < (1<<9)) {
+//		led_on(i);
+//		delay_ms(100);
+//		i = i<<1;
+//	}
+//	while (i > 1) {
+//		led_on(i);
+//		delay_ms(100);
+//		i = i>>1;
+//	}
+//}
