@@ -14,12 +14,75 @@
 #define F_CPU 16000000UL
 
 // Register Adresses
-#define RCC_ADR 	0x4002 3800
-#define GPIOB_ADR 	0x4002 0000
-#define GPIOC_ADR 	0x4002 0800
+#define SYSCFG_ADR  0x40013800
+#define EXTI_ADR 	0x40013C00
+#define GPIOB_ADR 	0x40020000
+#define GPIOC_ADR 	0x40020800
+#define RCC_ADR 	0x40023800
 
+// IRQ Positions Numbers
+#define EXTI15_10n 40
 
 /***** STM32 REGISTER ACCESS *****/
+//SYSCFG
+typedef struct {
+	uint32_t MEMRMP;
+	uint32_t PMC;
+	uint32_t EXTICR1;
+	uint32_t EXTICR2;
+	uint32_t EXTICR3;
+	uint32_t EXTICR4;
+	uint32_t CMPCR;
+} SYSCFG;
+
+//EXTI
+typedef struct {
+	uint32_t IMR;
+	uint32_t EMR;
+	uint32_t RTSR;
+	uint32_t FTSR;
+	uint32_t SWIER;
+	uint32_t PR;
+} EXTI;
+
+// ADC
+typedef struct {
+	uint32_t SR;
+	uint32_t CR1;
+	uint32_t CR2;
+	uint32_t SMPR1;
+	uint32_t SMPR2;
+	uint32_t JOFR1;
+	uint32_t JOFR2;
+	uint32_t JOFR3;
+	uint32_t JOFR4;
+	uint32_t HTR;
+	uint32_t LTR;
+	uint32_t SQR1;
+	uint32_t SQR2;
+	uint32_t SQR3;
+	uint32_t JSQR;
+	uint32_t JDR1;
+	uint32_t JDR2;
+	uint32_t JDR3;
+	uint32_t JDR4;
+	uint32_t DR;
+} ADC;
+
+//GPIOX
+typedef struct {
+	uint32_t MODER;
+	uint32_t OTYPER;
+	uint32_t OSPEEDR;
+	uint32_t PUPDR;
+	uint32_t IDR;
+	uint32_t ODR;
+	uint32_t BSRR;
+	uint32_t LCKR;
+	uint32_t AFRL;
+	uint32_t AFRH;
+} GPIOX;
+
 //RCC
 typedef struct {
 	uint32_t CR;
@@ -60,44 +123,6 @@ typedef struct {
 	uint32_t DCKCFGR;
 } RCC;
 
-// ADC
-typedef struct {
-	uint32_t SR;
-	uint32_t CR1;
-	uint32_t CR2;
-	uint32_t SMPR1;
-	uint32_t SMPR2;
-	uint32_t JOFR1;
-	uint32_t JOFR2;
-	uint32_t JOFR3;
-	uint32_t JOFR4;
-	uint32_t HTR;
-	uint32_t LTR;
-	uint32_t SQR1;
-	uint32_t SQR2;
-	uint32_t SQR3;
-	uint32_t JSQR;
-	uint32_t JDR1;
-	uint32_t JDR2;
-	uint32_t JDR3;
-	uint32_t JDR4;
-	uint32_t DR;
-} ADC;
-
-//GPIOX
-typedef struct {
-	uint32_t MODER;
-	uint32_t OTYPER;
-	uint32_t OSPEEDR;
-	uint32_t PUPDR;
-	uint32_t IDR;
-	uint32_t ODR;
-	uint32_t BSRR;
-	uint32_t LCKR;
-	uint32_t AFRL;
-	uint32_t AFRH;
-} GPIOX;
-
 //TIMX
 typedef struct {
 	uint32_t CR1;
@@ -123,15 +148,5 @@ typedef struct {
 	uint32_t TIM2_OR;
 	uint32_t TIM5_OR;
 } TIMX;
-
-//EXTI
-typedef struct {
-	uint32_t IMR;
-	uint32_t EMR;
-	uint32_t RTSR;
-	uint32_t FTSR;
-	uint32_t SWIER;
-	uint32_t PR;
-} EXTI;
 
 #endif // "stm32regs.h"

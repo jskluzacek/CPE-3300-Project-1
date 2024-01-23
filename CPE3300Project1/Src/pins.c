@@ -10,7 +10,7 @@
 #include "stm32regs.h"
 
 static volatile RCC* const rcc = (RCC*) RCC_ADR;
-static volatile GPIOX* const gpiob = (GPIOX*) GPIOC_ADR;
+static volatile GPIOX* const gpioc = (GPIOX*) GPIOC_ADR;
 
 
 /**
