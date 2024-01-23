@@ -10,8 +10,8 @@
 #include "stm32regs.h"
 #include "delay.h"
 
-static volatile RCC* const rcc = (RCC*) 0x40023800;
-static volatile GPIOX* const gpiob = (GPIOX*) 0x40020400;
+static volatile RCC* const rcc = (RCC*) RCC_ADR;
+static volatile GPIOX* const gpiob = (GPIOX*) GPIOB_ADR;
 
 /**
  * led_init:
