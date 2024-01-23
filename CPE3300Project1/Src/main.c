@@ -14,11 +14,11 @@ int main(void)
 	led_init();
 
 	for(;;) {
-		led_on(0b0000000001);
+		led_on(IDLE_LED);
 		delay_ms(250);
-		led_on(0b0000000010);
+		led_on(BUSY_LED);
 		delay_ms(250);
-		led_on(0b0000000100);
+		led_on(COLL_LED);
 		delay_ms(250);
 	}
 
