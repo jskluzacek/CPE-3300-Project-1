@@ -13,11 +13,22 @@ static volatile RCC* const rcc = (RCC*) RCC_ADR;
 
 typedef enum {
 	 IDLE,
-	 BUSY,
+	 BUSY_LOW,
+	 BUSY_HIGH,
 	 COLLISION
 } STATE;
 
 static STATE state = IDLE;
+
+/**
+ * get_state:
+ * Returns current channel state.
+ * parameters: none
+ * returns: none
+ */
+STATE get_state(void) {
+	return state;
+}
 
 /**
  * edge_detection_init:
@@ -45,28 +56,36 @@ void edge_detection_init(void) {
 
 /**
  * EXTI15_10_IRQHandler:
- * Interrupt handler for EXTI12 resulting from edge detection from pin PC12
+ * Interrupt handler for EXTI12 resulting from edge detection on pin PC12.
  * parameters: none
  * returns: none
  */
 void EXTI15_10_IRQHandler(void) {
+	NVIC_ClearPendingIRQ(EXTI15_10n);
 	//verify interrupt was called by EXTI12
 	if (exti->PR & (1<<12)) {
-		//TODO begin counter to detect idle or collision
 		switch (state) {
 		case IDLE: {
-
+			state = BUSY_LOW;
+			//TODO reset collision timer
 			break;
 			}
-		case BUSY: {
-
+		case BUSY_LOW: {
+			state = BUSY_HIGH;
+			//TODO reset idle timer
+			break;
+			}
+		case BUSY_HIGH: {
+			state = BUSY_LOW;
+			//TODO reset collision timer
 			break;
 			}
 		case COLLISION: {
-
+			//TODO wait random amount of time before switching
+			state = BUSY_HIGH;
+			//TODO reset idle timer
 			break;
 			}
 		};
 	}
-	NVIC_ClearPendingIRQ(EXTI15_10n);
 }
