@@ -11,13 +11,6 @@ static volatile SYSCFG* const syscfg = (SYSCFG*) SYSCFG_ADR;
 static volatile EXTI* const exti = (EXTI*) EXTI_ADR;
 static volatile RCC* const rcc = (RCC*) RCC_ADR;
 
-typedef enum {
-	 IDLE,
-	 BUSY_LOW,
-	 BUSY_HIGH,
-	 COLLISION
-} STATE;
-
 static STATE state = IDLE;
 
 /**

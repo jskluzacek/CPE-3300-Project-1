@@ -7,11 +7,15 @@
  *****************************************************************************/
 #include "led.h"
 #include "delay.h"
+#include "pins.h"
+#include "interrupts.h"
 
 int main(void)
 {
 	/*** INITIALIZE API's ***/
 	led_init();
+	pin_init();
+	edge_detection_init();
 
 	for(;;) {
 		led_on(IDLE_LED);
