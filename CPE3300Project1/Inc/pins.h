@@ -9,6 +9,8 @@
 #ifndef _pins_H
 #define _pins_H
 
+#define PINS_MASK 0x400000
+
 void pin_init(void);
 
 #endif /* pins.h */

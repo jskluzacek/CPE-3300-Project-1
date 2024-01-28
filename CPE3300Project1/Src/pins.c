@@ -22,4 +22,10 @@ static volatile GPIOX* const gpioc = (GPIOX*) GPIOC_ADR;
  */
 void pin_init(void) {
 
+	// Enable clocks for PC11 and PC12
+	rcc->AHB1ENR |= (1<<2); // GPIOC = BIT 2
+
+	// Set PC11 to output and PC12 to input (rmw)
+	gpioc->MODER |= PINS_MASK;
+	gpioc->MODER &= ~(PINS_MASK<<1);
 }
