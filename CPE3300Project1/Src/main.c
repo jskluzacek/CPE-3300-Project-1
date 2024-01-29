@@ -9,6 +9,7 @@
 #include "delay.h"
 #include "pins.h"
 #include "interrupts.h"
+#include "stm32regs.h"
 
 int main(void)
 {
@@ -17,13 +18,50 @@ int main(void)
 	pin_init();
 	edge_detection_init();
 
-	for(;;) {
+	// led test
+	for(int i = 20; i <= 50; i += 5) {
+		delay_ms(i);
 		led_on(IDLE_LED);
-		delay_ms(250);
-		led_on(BUSY_LED);
-		delay_ms(250);
+		delay_ms(i);
+		led_on(BUSY_LOW_LED);
+		delay_ms(i);
+		led_on(BUSY_HIGH_LED);
+		delay_ms(i);
 		led_on(COLL_LED);
-		delay_ms(250);
+	}
+
+	// program start
+	for (int i = 0; i < 3; i++) {
+		delay_ms(100);
+		led_on(0);
+		delay_ms(100);
+		led_on(IDLE_LED | BUSY_LOW_LED | BUSY_HIGH_LED | COLL_LED);
+	}
+
+	for(;;) {
+		int debug = 0;
+		int leds = 0;
+
+		// display current state
+		switch (get_state()) {
+		case IDLE: {
+			leds = IDLE_LED;
+			break;
+			}
+		case BUSY_LOW: {
+			leds = BUSY_LOW_LED;
+			break;
+			}
+		case BUSY_HIGH: {
+			leds = BUSY_HIGH_LED;
+			break;
+			}
+		case COLLISION: {
+			leds = COLL_LED;
+			break;
+			}
+		};
+		led_on(leds | debug);
 	}
 
 	return 0;

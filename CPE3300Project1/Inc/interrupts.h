@@ -11,12 +11,13 @@
 
 typedef enum {
 	 IDLE,
-	 BUSY,
+	 BUSY_LOW,
+	 BUSY_HIGH,
 	 COLLISION
 } STATE;
 
 
-void get_state(void);
+STATE get_state(void);
 void edge_detection_init(void);
 
 #endif /* interrupt.h */

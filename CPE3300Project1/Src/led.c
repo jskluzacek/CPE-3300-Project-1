@@ -10,8 +10,8 @@
 #include "stm32regs.h"
 #include "delay.h"
 
-static volatile RCC* const rcc = (RCC*) RCC_ADR;
-static volatile GPIOX* const gpiob = (GPIOX*) GPIOB_ADR;
+static volatile RCC* const rcc = (RCC*)RCC_ADR;
+static volatile GPIOX* const gpiob = (GPIOX*)GPIOB_ADR;
 
 /**
  * led_init:
@@ -34,7 +34,7 @@ void led_init(void) {
 void led_on(int number) {
 	int temp = number & PB5TO10;			// isolate PB5-10
 	temp |= ((number & PB12TO15)<<1);		// isolate and prepend PB12-15 and skip PB11
-	gpiob->ODR = (temp<<5);					// shift final value into place in ODR
+	gpiob->ODR = (temp<<5);					// shift final value into place and write to ODR
 }
 
 //TODO Fix if needed

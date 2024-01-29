@@ -12,9 +12,10 @@
 #define OUTPUT_MASK 0x55155400
 #define PB5TO10 0x3F
 #define PB12TO15 0x3C0
-#define IDLE_LED 0b0000000001
-#define BUSY_LED 0b0000000010
-#define COLL_LED 0b0000000100
+#define IDLE_LED 		0b0000000001
+#define BUSY_LOW_LED  	0b0000000010
+#define BUSY_HIGH_LED 	0b0000000100
+#define COLL_LED 		0b0000001000
 
 void led_init(void);
 void led_on(int number);

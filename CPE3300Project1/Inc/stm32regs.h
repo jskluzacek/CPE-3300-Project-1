@@ -16,9 +16,11 @@
 // Register Adresses
 #define SYSCFG_ADR  0x40013800
 #define EXTI_ADR 	0x40013C00
-#define GPIOB_ADR 	0x40020000
+#define GPIOA_ADR 	0x40020000
+#define GPIOB_ADR 	0x40020400
 #define GPIOC_ADR 	0x40020800
 #define RCC_ADR 	0x40023800
+#define NVIC_ADR	0xE000E100
 
 // IRQ Positions Numbers
 #define EXTI15_10n 40
@@ -44,30 +46,6 @@ typedef struct {
 	uint32_t SWIER;
 	uint32_t PR;
 } EXTI;
-
-// ADC
-typedef struct {
-	uint32_t SR;
-	uint32_t CR1;
-	uint32_t CR2;
-	uint32_t SMPR1;
-	uint32_t SMPR2;
-	uint32_t JOFR1;
-	uint32_t JOFR2;
-	uint32_t JOFR3;
-	uint32_t JOFR4;
-	uint32_t HTR;
-	uint32_t LTR;
-	uint32_t SQR1;
-	uint32_t SQR2;
-	uint32_t SQR3;
-	uint32_t JSQR;
-	uint32_t JDR1;
-	uint32_t JDR2;
-	uint32_t JDR3;
-	uint32_t JDR4;
-	uint32_t DR;
-} ADC;
 
 //GPIOX
 typedef struct {
@@ -148,5 +126,45 @@ typedef struct {
 	uint32_t TIM2_OR;
 	uint32_t TIM5_OR;
 } TIMX;
+
+//NVIC
+typedef struct {
+	uint32_t ISER0;
+	uint32_t ISER1;
+	uint32_t ISER2;
+	uint32_t ICER0;
+	uint32_t ICER1;
+	uint32_t ICER2;
+	uint32_t ISPR0;
+	uint32_t ISPR1;
+	uint32_t ISPR2;
+	uint32_t ICPR0;
+	uint32_t ICPR1;
+	uint32_t ICPR2;
+	uint32_t IABR0;
+	uint32_t IABR1;
+	uint32_t IABR2;
+	uint32_t IPR0;
+	uint32_t IPR1;
+	uint32_t IPR2;
+	uint32_t IPR3;
+	uint32_t IPR4;
+	uint32_t IPR5;
+	uint32_t IPR6;
+	uint32_t IPR7;
+	uint32_t IPR8;
+	uint32_t IPR9;
+	uint32_t IPR10;
+	uint32_t IPR11;
+	uint32_t IPR12;
+	uint32_t IPR13;
+	uint32_t IPR14;
+	uint32_t IPR15;
+	uint32_t IPR16;
+	uint32_t IPR17;
+	uint32_t IPR18;
+	uint32_t IPR19;
+	uint32_t IPR20;
+} NVIC;
 
 #endif // "stm32regs.h"
