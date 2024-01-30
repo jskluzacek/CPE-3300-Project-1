@@ -14,6 +14,7 @@
 #define F_CPU 16000000UL
 
 // Register Adresses
+#define TIM2_ADR	0x40000000
 #define SYSCFG_ADR  0x40013800
 #define EXTI_ADR 	0x40013C00
 #define GPIOA_ADR 	0x40020000

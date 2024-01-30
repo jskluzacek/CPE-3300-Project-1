@@ -8,6 +8,7 @@
 #include "stm32regs.h"
 #include "interrupts.h"
 
+static volatile TIMX* const tim2 = (TIMX*) TIM2_ADR;
 static volatile SYSCFG* const syscfg = (SYSCFG*) SYSCFG_ADR;
 static volatile EXTI* const exti = (EXTI*) EXTI_ADR;
 static volatile RCC* const rcc = (RCC*) RCC_ADR;
@@ -50,6 +51,11 @@ void edge_detection_init(void) {
 	nvic->ISER1 |= (1<<(EXTI15_10n - 32));
 }
 
+void TIM2_IRQHandler(void) {
+	// clear bit?
+
+}
+
 /**
  * EXTI15_10_IRQHandler:
  * Interrupt handler for EXTI12 resulting from edge detection on pin PC12.
@@ -59,6 +65,7 @@ void edge_detection_init(void) {
 void EXTI15_10_IRQHandler(void) {
 	// clear EXTI12 pending bit
 	exti->PR = (1<<12);
+	//TODO temporarily disable interrupts to prevent race condition?
 	switch (state) {
 	case IDLE: {
 		state = BUSY_LOW;
@@ -82,9 +89,4 @@ void EXTI15_10_IRQHandler(void) {
 		break;
 		}
 	};
-
-//	//verify interrupt was called by EXTI12
-//	if (exti->PR & (1<<12)) {
-//
-//	}
 }
