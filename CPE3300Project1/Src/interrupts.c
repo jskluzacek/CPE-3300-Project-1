@@ -84,16 +84,18 @@ void edge_detection_init(void) {
 void TIM2_IRQHandler(void) {
 	// clear TIF pending bit
 	tim2->SR &= ~(1<<6);
+	// stop timer and interrupts (timer reset implicitly)
+	tim2->CR1 &= ~(1<<0);
+	tim2->DIER &= ~(1<<0);
+
 	// update state
 	switch (state) {
 	case BUSY_LOW: {
 		state = COLLISION;
-		tim2->DIER &= ~(1<<0);
 		break;
 		}
 	case BUSY_HIGH: {
 		state = IDLE;
-		tim2->DIER &= ~(1<<0);
 		break;
 		}
 	default: break;
@@ -110,59 +112,38 @@ void EXTI15_10_IRQHandler(void) {
 	// clear EXTI12 pending bit
 	exti->PR = (1<<12);
 	//TODO temporarily disable interrupts to prevent race condition?
+	// reset and stop timer
+	tim2->CR1 &= ~(1<<0);
+	tim2->CNT = 0;
 	// update state
 	switch (state) {
 	case IDLE: {
 		state = BUSY_LOW;
-		// reset collision timer
-//		tim2->ARR = 0;
-		tim2->CR1 &= ~(1<<0);
-//		tim2->EGR = (1<<0);
-//		tim2->ARR = COLL_TIME;
-		tim2->CNT = 0;
+		// preset collision timer
 		tim2->ARR = COLL_TIME;
-		tim2->CR1 |= (1<<0);
-		tim2->DIER |= (1<<0);
 		break;
 		}
 	case BUSY_LOW: {
 		state = BUSY_HIGH;
-		// reset idle timer
-//		tim2->ARR = 0;
-		tim2->CR1 &= ~(1<<0);
-//		tim2->EGR = (1<<0);
-//		tim2->ARR = IDLE_TIME;
-		tim2->CNT = 0;
+		// preset idle timer
 		tim2->ARR = IDLE_TIME;
-		tim2->CR1 |= (1<<0);
 		break;
 		}
 	case BUSY_HIGH: {
 		state = BUSY_LOW;
-		// reset collision timer
-//		tim2->ARR = 0;
-		tim2->CR1 &= ~(1<<0);
-//		tim2->EGR = (1<<0);
-//		tim2->ARR = COLL_TIME;
-		tim2->CNT = 0;
+		// preset collision timer
 		tim2->ARR = COLL_TIME;
-		tim2->CR1 |= (1<<0);
 		break;
 		}
 	case COLLISION: {
 		//TODO wait random amount of time before switching
 		state = BUSY_HIGH;
-		// reset idle timer
-//		tim2->ARR = 0;
-		tim2->CR1 &= ~(1<<0);
-//		tim2->EGR = (1<<0);
-//		tim2->ARR = IDLE_TIME;
-		tim2->CNT = 0;
 		tim2->ARR = IDLE_TIME;
-		tim2->CR1 |= (1<<0);
-		tim2->DIER |= (1<<0);
 		break;
 		}
 	default: break;
 	};
+	// start timer and interrupts
+	tim2->CR1 |= (1<<0);
+	tim2->DIER |= (1<<0);
 }
