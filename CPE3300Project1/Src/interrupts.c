@@ -9,9 +9,12 @@
 #include "interrupts.h"
 
 #define CPU_FREQ 	16000000UL 			// system clock speed is 16MHz
+//#define DELAY_TIME 	0.00111 * CPU_FREQ	// max time between edges is 1.11ms
+//#define COLL_TIME 	0.00110 * CPU_FREQ	// collision timeout is 1.10ms
+//#define IDLE_TIME	0.00113 * CPU_FREQ 	// idle timeout is 1.13ms
 #define DELAY_TIME 	0.00111 * CPU_FREQ	// max time between edges is 1.11ms
-#define COLL_TIME 	0.00110 * CPU_FREQ	// collision timeout is 1.10ms
-#define IDLE_TIME	0.00113 * CPU_FREQ 	// idle timeout is 1.13ms
+#define COLL_TIME 	17600	// collision timeout is 1.10ms
+#define IDLE_TIME	18080 	// idle timeout is 1.13ms
 
 static volatile TIMX* const tim2 = (TIMX*) TIM2_ADR;
 static volatile SYSCFG* const syscfg = (SYSCFG*) SYSCFG_ADR;
@@ -61,15 +64,17 @@ void edge_detection_init(void) {
 
 	// configure TIM2
 	// TODO
-	tim2->ARR = DELAY_TIME;
+	tim2->ARR = 0;
+//	tim2->EGR |= (1<<0);
 
-	// enable update interrupt and TIM2
-	tim2->DIER |= (1<<0);
-	tim2->CR1 |= (1<<0);
-
+//	// enable update interrupt
+//	tim2->DIER |= (1<<0);
 
 	// enable interrupt in NVIC
 	nvic->ISER0 |= (1<<TIM2n);
+
+	// enable TIM2
+	tim2->CR1 |= (1<<0);
 }
 
 /**
@@ -83,10 +88,12 @@ void TIM2_IRQHandler(void) {
 	switch (state) {
 	case BUSY_LOW: {
 		state = COLLISION;
+		tim2->DIER &= ~(1<<0);
 		break;
 		}
 	case BUSY_HIGH: {
 		state = IDLE;
+		tim2->DIER &= ~(1<<0);
 		break;
 		}
 	default: break;
@@ -108,30 +115,52 @@ void EXTI15_10_IRQHandler(void) {
 	case IDLE: {
 		state = BUSY_LOW;
 		// reset collision timer
-		tim2->ARR = COLL_TIME;
+//		tim2->ARR = 0;
+		tim2->CR1 &= ~(1<<0);
+//		tim2->EGR = (1<<0);
+//		tim2->ARR = COLL_TIME;
 		tim2->CNT = 0;
+		tim2->ARR = COLL_TIME;
+		tim2->CR1 |= (1<<0);
+		tim2->DIER |= (1<<0);
 		break;
 		}
 	case BUSY_LOW: {
 		state = BUSY_HIGH;
 		// reset idle timer
-		tim2->ARR = IDLE_TIME;
+//		tim2->ARR = 0;
+		tim2->CR1 &= ~(1<<0);
+//		tim2->EGR = (1<<0);
+//		tim2->ARR = IDLE_TIME;
 		tim2->CNT = 0;
+		tim2->ARR = IDLE_TIME;
+		tim2->CR1 |= (1<<0);
 		break;
 		}
 	case BUSY_HIGH: {
 		state = BUSY_LOW;
 		// reset collision timer
-		tim2->ARR = COLL_TIME;
+//		tim2->ARR = 0;
+		tim2->CR1 &= ~(1<<0);
+//		tim2->EGR = (1<<0);
+//		tim2->ARR = COLL_TIME;
 		tim2->CNT = 0;
+		tim2->ARR = COLL_TIME;
+		tim2->CR1 |= (1<<0);
 		break;
 		}
 	case COLLISION: {
 		//TODO wait random amount of time before switching
 		state = BUSY_HIGH;
 		// reset idle timer
-		tim2->ARR = IDLE_TIME;
+//		tim2->ARR = 0;
+		tim2->CR1 &= ~(1<<0);
+//		tim2->EGR = (1<<0);
+//		tim2->ARR = IDLE_TIME;
 		tim2->CNT = 0;
+		tim2->ARR = IDLE_TIME;
+		tim2->CR1 |= (1<<0);
+		tim2->DIER |= (1<<0);
 		break;
 		}
 	default: break;
