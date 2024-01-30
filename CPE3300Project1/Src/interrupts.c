@@ -49,6 +49,21 @@ void edge_detection_init(void) {
 
 	// enable interrupt in NVIC
 	nvic->ISER1 |= (1<<(EXTI15_10n - 32));
+
+
+	// enable RCC for TIM2
+	rcc->APB1ENR |= (1<<0);
+
+	// configure TIM2
+	// TODO
+
+	// enable update interrupt and TIM2
+	tim2->DIER |= (1<<0);
+	tim2->CR1 |= (1<<0);
+
+
+	// enable interrupt in NVIC
+	nvic->ISER0 |= (1<<28);
 }
 
 void TIM2_IRQHandler(void) {
@@ -58,7 +73,7 @@ void TIM2_IRQHandler(void) {
 
 /**
  * EXTI15_10_IRQHandler:
- * Interrupt handler for EXTI12 resulting from edge detection on pin PC12.
+ * Interrupt handler for EXTI12 resulting from edge detection on PC12 (input)
  * parameters: none
  * returns: none
  */
