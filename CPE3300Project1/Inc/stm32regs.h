@@ -10,9 +10,6 @@
 #ifndef _STM32REGS_H
 #define _STM32REGS_H
 
-// CPU clock frequency
-#define F_CPU 16000000UL
-
 // Register Adresses
 #define TIM2_ADR	0x40000000
 #define SYSCFG_ADR  0x40013800
@@ -24,7 +21,8 @@
 #define NVIC_ADR	0xE000E100
 
 // IRQ Positions Numbers
-#define EXTI15_10n 40
+#define EXTI15_10n 	40
+#define TIM2n		28
 
 /***** STM32 REGISTER ACCESS *****/
 //SYSCFG
