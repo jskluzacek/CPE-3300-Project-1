@@ -3,20 +3,19 @@
  * @file           : main.c
  * @author         : Team Edward - Kenny Gifford and Jerico Skluzacek
  * @date		   : 01/23/24
- * @brief          : TODO
+ * @brief          : Monitors the state of the Rx input signal and displays
+ * 			it on LEDs.
  *****************************************************************************/
-#include <channel_monitor.h>
+#include "channel_monitor.h"
 #include "led.h"
 #include "delay.h"
-#include "pins.h"
 #include "stm32regs.h"
 
 int main(void)
 {
 	/*** INITIALIZE API's ***/
 	led_init();
-	pin_init();
-	edge_detection_init();
+	channel_monitor_init();
 
 	// led test
 	for(int i = 20; i <= 50; i += 5) {
