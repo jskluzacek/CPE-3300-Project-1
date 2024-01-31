@@ -5,10 +5,10 @@
  * @date		   : 01/23/24
  * @brief          : TODO
  *****************************************************************************/
+#include <channel_monitor.h>
 #include "led.h"
 #include "delay.h"
 #include "pins.h"
-#include "interrupts.h"
 #include "stm32regs.h"
 
 int main(void)

@@ -1,21 +1,14 @@
 /******************************************************************************
  * @assignment	   : CPE3300 Project 1
- * @file           : interrupts.h
+ * @file           : channel_monitor.c
  * @author         : Team Edward - Kenny Gifford and Jerico Skluzacek
- * @date		   : 01/23/24
- * @brief          : Interrupt Configuration
+ * @date		   : 01/30/24
+ * @brief          : Channel Monitor API
  *****************************************************************************/
 #include "stm32regs.h"
-#include "interrupts.h"
+#include "channel_monitor.h"
 
-#define CPU_FREQ 	16000000UL 			// system clock speed is 16MHz
-//#define DELAY_TIME 	0.00111 * CPU_FREQ	// max time between edges is 1.11ms
-//#define COLL_TIME 	0.00110 * CPU_FREQ	// collision timeout is 1.10ms
-//#define IDLE_TIME	0.00113 * CPU_FREQ 	// idle timeout is 1.13ms
-#define DELAY_TIME 	0.00111 * CPU_FREQ	// max time between edges is 1.11ms
-#define COLL_TIME 	17600	// collision timeout is 1.10ms
-#define IDLE_TIME	18080 	// idle timeout is 1.13ms
-
+static volatile GPIOX* const gpioc = (GPIOX*) GPIOC_ADR;
 static volatile TIMX* const tim2 = (TIMX*) TIM2_ADR;
 static volatile SYSCFG* const syscfg = (SYSCFG*) SYSCFG_ADR;
 static volatile EXTI* const exti = (EXTI*) EXTI_ADR;
@@ -28,65 +21,64 @@ static STATE state = IDLE;
  * get_state:
  * Returns current channel state.
  * parameters: none
- * returns: none
+ * returns: the current channel state of idle, busy, or collision
  */
 STATE get_state(void) {
 	return state;
 }
 
 /**
- * edge_detection_init:
+ * channel_monitor_init:
  * Enables rising and falling edge detection for pin PC12
  * and resulting interrupt call on EXTI12.
  * parameters: none
  * returns: none
  */
-void edge_detection_init(void) {
+void channel_monitor_init(void) {
+	/* RCC */
+	// enable RCC for GPIOC (PC11-12)
+	rcc->AHB1ENR |= (1<<2); 	// GPIOC = BIT 2
 	// enable RCC for SYSCFG
-	rcc->APB2ENR |= (1<<14);
+	rcc->APB2ENR |= (1<<14);	// SYSCFG = Bit 14
+	// enable RCC for TIM2
+	rcc->APB1ENR |= (1<<0);		// TIM2 = Bit 0
 
-	// external interrupt configuration for PC12
+	/* Tx/Rx Pins */
+	// set PC11 to output and PC12 to input (rmw)
+	gpioc->MODER |= PINS_MASK;
+	gpioc->MODER &= ~(PINS_MASK<<1);
+
+	/* External Interrupt Config */
+	// enable EXTI for PC12
 	syscfg->EXTICR4 |= 0b0010;
-
 	// enable EXTI line 12
 	exti->IMR |= (1<<12);
-
-	// enable rising and falling edge detection for EXTI12
+	// enable rising edge detection for EXTI12
 	exti->RTSR |= (1<<12);
+	// enable falling edge detection for EXTI12
 	exti->FTSR |= (1<<12);
 
-	// enable interrupt in NVIC
-	nvic->ISER1 |= (1<<(EXTI15_10n - 32));
-
-
-	// enable RCC for TIM2
-	rcc->APB1ENR |= (1<<0);
-
-	// configure TIM2
-	// TODO
-	tim2->ARR = 0;
-//	tim2->EGR |= (1<<0);
-
-//	// enable update interrupt
-//	tim2->DIER |= (1<<0);
-
-	// enable interrupt in NVIC
+	/* Enable Interrupts */
+	// enable TIM2 interrupt in NVIC
 	nvic->ISER0 |= (1<<TIM2n);
-
-	// enable TIM2
-	tim2->CR1 |= (1<<0);
+	// enable EXTI interrupt in NVIC
+	nvic->ISER1 |= (1<<(EXTI15_10n - 32));
+	// enable TIM2 interrupts
+	tim2->DIER |= (1<<0);
 }
 
 /**
  * TIM2_IRQHandler:
  * Interrupt handler for idle/collision timer timeout whilst in busy states.
+ * parameters: none
+ * returns: none
  */
 void TIM2_IRQHandler(void) {
-	// clear TIF pending bit
-	tim2->SR &= ~(1<<6);
-	// stop timer and interrupts (timer reset implicitly)
+	// clear UIF pending bit
+	tim2->SR &= ~(1<<0);
+
+	// stop timer (resets implicitly)
 	tim2->CR1 &= ~(1<<0);
-	tim2->DIER &= ~(1<<0);
 
 	// update state
 	switch (state) {
@@ -110,11 +102,14 @@ void TIM2_IRQHandler(void) {
  */
 void EXTI15_10_IRQHandler(void) {
 	// clear EXTI12 pending bit
-	exti->PR = (1<<12);
+	exti->PR |= (1<<12);
+
 	//TODO temporarily disable interrupts to prevent race condition?
-	// reset and stop timer
+
+	// stop and reset timer
 	tim2->CR1 &= ~(1<<0);
 	tim2->CNT = 0;
+
 	// update state
 	switch (state) {
 	case IDLE: {
@@ -136,14 +131,15 @@ void EXTI15_10_IRQHandler(void) {
 		break;
 		}
 	case COLLISION: {
-		//TODO wait random amount of time before switching
+		//TODO wait random amount of time before switching?
 		state = BUSY_HIGH;
+		// preset idle timer
 		tim2->ARR = IDLE_TIME;
 		break;
 		}
 	default: break;
 	};
-	// start timer and interrupts
+
+	// start timer
 	tim2->CR1 |= (1<<0);
-	tim2->DIER |= (1<<0);
 }
