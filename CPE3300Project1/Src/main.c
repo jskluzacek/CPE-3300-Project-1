@@ -6,10 +6,12 @@
  * @brief          : Monitors the state of the Rx input signal and displays
  * 			it on LEDs.
  *****************************************************************************/
+
 #include "channel_monitor.h"
 #include "led.h"
 #include "delay.h"
 #include "stm32regs.h"
+#include "console.h"
 
 int main(void)
 {
