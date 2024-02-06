@@ -43,10 +43,10 @@ void channel_monitor_init(void) {
 	// enable RCC for TIM2
 	rcc->APB1ENR |= (1<<0);		// TIM2 = Bit 0
 
-	/* Tx/Rx Pins */
-	// set PC11 to output and PC12 to input (rmw)
-	gpioc->MODER |= PINS_MASK;
-	gpioc->MODER &= ~(PINS_MASK<<1);
+	/* Rx Pin */
+	// set PC12 to input for Rx (rmw)
+	gpioc->MODER |= (1<<PC12);
+	gpioc->MODER &= ~(1<<(PC12+1));
 
 	/* External Interrupt Config */
 	// enable EXTI for PC12

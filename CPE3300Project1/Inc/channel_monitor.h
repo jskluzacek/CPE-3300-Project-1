@@ -9,7 +9,7 @@
 #ifndef _interrupt_H
 #define _interrupt_H
 
-#define PINS_MASK 0x400000				// MODER mask for Tx: PC11, Rx: PC12
+#define PC12 12
 
 #define CPU_FREQ 	16000000UL 			// system clock speed is 16MHz
 #define DELAY_TIME 	0.00111 * CPU_FREQ	// max time between edges is 1.11ms
