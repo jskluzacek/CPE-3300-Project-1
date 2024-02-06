@@ -9,6 +9,7 @@
 #include <stdio.h>
 #include <string.h>
 #include "console.h"
+#include "transmit.h"
 
 /**
  * console_help:
@@ -29,7 +30,7 @@ static void console_help() {
  */
 void console_scan(void) {
 	char command[50];
-	char message[100];
+	unsigned char message[100];
 	int ret_val;
 	char userinput[150];
 
@@ -44,6 +45,7 @@ void console_scan(void) {
 	}
 	else if (!strcmp(command, "send")) {
 		// TODO: send message
+		tx_string(message);
 	}
 	else {
 		printf("Unsupported command: %s\n", command);
