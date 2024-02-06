@@ -22,7 +22,6 @@ static int half_bit_index = 0;
  * tx_init:
  */
 void tx_init(void) {
-
 	/* RCC */
 	rcc->AHB1ENR |= (1<<2); 	// GPIOC = BIT 2
 	rcc->APB1ENR |= (1<<1);		// TIM3 = Bit 1

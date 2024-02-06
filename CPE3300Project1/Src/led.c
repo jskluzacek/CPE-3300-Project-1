@@ -65,13 +65,13 @@ void TIM4_IRQHandler(void) {
 
 	// get state
 	STATE state;
-	__asm("PUSH {r0-r12, lr");
+	__asm("PUSH {r0-r12, lr}");
 	state = get_state();
 	__asm("POP {r0-r12, lr}");
 	__asm("BX LR");
 
 	// update LEDs
-	char leds = 0;
+	int leds = 0;
 	switch (state) {
 	case IDLE: {
 		leds = IDLE_LED;
@@ -91,6 +91,7 @@ void TIM4_IRQHandler(void) {
 		}
 	};
 
+	// write LED pins
 	int temp = leds & PB5TO10;			// isolate PB5-10
 	temp |= ((leds & PB12TO15)<<1);		// isolate and prepend PB12-15 and skip PB11
 	gpiob->ODR = (temp<<5);
