@@ -36,7 +36,7 @@ STATE get_state(void) {
  */
 void channel_monitor_init(void) {
 	/* RCC */
-	// enable RCC for GPIOC (PC11-12)
+	// enable RCC for GPIOC
 	rcc->AHB1ENR |= (1<<2); 	// GPIOC = BIT 2
 	// enable RCC for SYSCFG
 	rcc->APB2ENR |= (1<<14);	// SYSCFG = Bit 14
@@ -63,7 +63,7 @@ void channel_monitor_init(void) {
 	nvic->ISER0 |= (1<<TIM2n);
 	// enable EXTI interrupt in NVIC
 	nvic->ISER1 |= (1<<(EXTI15_10n - 32));
-	// enable TIM2 interrupts
+	// enable TIM2 interrupt
 	tim2->DIER |= (1<<0);
 }
 

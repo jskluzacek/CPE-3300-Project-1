@@ -13,22 +13,45 @@
 static volatile GPIOX* const gpioc = (GPIOX*) GPIOC_ADR;
 static volatile TIMX* const tim3 = (TIMX*) TIM3_ADR;
 static volatile RCC* const rcc = (RCC*) RCC_ADR;
+static volatile NVIC* const nvic = (NVIC*) NVIC_ADR;
 
 static char buffer[BUFFER_SIZE];
-static char index = 0;
-static char prev_tx = 0;
+static char index;
 
+/**
+ * tx_init:
+ */
 void tx_init(void) {
+	index = 0;
+
+	/* RCC */
+	// enable RCC for GPIOC
+	rcc->AHB1ENR |= (1<<2); 	// GPIOC = BIT 2
 	// enable RCC for TIM3
 	rcc->APB1ENR |= (1<<1);		// TIM3 = Bit 1
 
+	/* Tx Pin */
 	// set PC11 to output for Tx (rmw)
 	gpioc->MODER |= (1<<PC11);
 	gpioc->MODER &= ~(1<<(PC11+1));
+
+	/* Enable Interrupts */
+	// enable TIM3 interrupt in NVIC
+	nvic->ISER0 |= (1<<TIM2n);
+	// enable TIM3 interrupt
+	tim3->DIER |= (1<<0);
+
+	/* Pre-load Timer Duration */
+	tim3->ARR = HALF_BIT_PERIOD;
 }
 
+/**
+ * tx_string:
+ *
+ */
 void tx_string(const unsigned char str[]) {
 	strncpy(buffer, str, BUFFER_SIZE);
+	tim3->CR1 |= (1<<0);
 }
 
 /**
