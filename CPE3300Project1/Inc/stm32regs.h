@@ -13,6 +13,7 @@
 // Register Adresses
 #define TIM2_ADR	0x40000000
 #define TIM3_ADR	0x40000400
+#define TIM4_ADR	0x40000800
 #define SYSCFG_ADR  0x40013800
 #define EXTI_ADR 	0x40013C00
 #define GPIOA_ADR 	0x40020000
@@ -24,6 +25,8 @@
 // IRQ Positions Numbers
 #define EXTI15_10n 	40
 #define TIM2n		28
+#define TIM3n		29
+#define TIM4n		30
 
 /***** STM32 REGISTER ACCESS *****/
 //SYSCFG

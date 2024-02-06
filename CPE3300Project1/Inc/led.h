@@ -12,6 +12,12 @@
 #define OUTPUT_MASK 0x55155400
 #define PB5TO10 0x3F
 #define PB12TO15 0x3C0
+
+/* Timings */
+#define CPU_FREQ 16000000UL
+#define LED_PERIOD 0.0002 * CPU_FREQ
+
+/* LEDs */
 #define IDLE_LED 		0b00000001
 #define BUSY_LOW_LED  	0b00000010
 #define BUSY_HIGH_LED 	0b00000100

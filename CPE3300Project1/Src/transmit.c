@@ -24,9 +24,7 @@ static int half_bit_index = 0;
 void tx_init(void) {
 
 	/* RCC */
-	// enable RCC for GPIOC
 	rcc->AHB1ENR |= (1<<2); 	// GPIOC = BIT 2
-	// enable RCC for TIM3
 	rcc->APB1ENR |= (1<<1);		// TIM3 = Bit 1
 
 	/* Tx Pin */
@@ -36,7 +34,7 @@ void tx_init(void) {
 
 	/* Enable Interrupts */
 	// enable TIM3 interrupt in NVIC
-	nvic->ISER0 |= (1<<TIM2n);
+	nvic->ISER0 |= (1<<TIM3n);
 	// enable TIM3 interrupt
 	tim3->DIER |= (1<<0);
 

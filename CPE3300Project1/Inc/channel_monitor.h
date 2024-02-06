@@ -17,12 +17,6 @@
 #define COLL_TIME 	0.00110 * CPU_FREQ	// collision timeout is 1.10ms
 #define IDLE_TIME	0.00113 * CPU_FREQ 	// idle timeout is 1.13ms
 
-/* LEDs */
-#define IDLE_LED 		0b00000001
-#define BUSY_LOW_LED  	0b00000010
-#define BUSY_HIGH_LED 	0b00000100
-#define COLL_LED 		0b00001000
-
 typedef enum {
 	 IDLE,
 	 BUSY_LOW,

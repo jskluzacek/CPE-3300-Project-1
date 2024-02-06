@@ -18,8 +18,8 @@
 int main(void)
 {
 	/*** INITIALIZE API's ***/
-	led_init();
 	channel_monitor_init();
+	led_init();
 	tx_init();
 	init_usart2(57600, CPU_FREQ);
 
