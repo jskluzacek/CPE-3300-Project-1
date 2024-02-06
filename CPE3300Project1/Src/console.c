@@ -17,12 +17,8 @@
  * returns: none
  */
 static void console_help() {
-	printf("To use Read Memory Word:\n");
-	printf("Type: rmw (address)\n");
-	printf("To use Write Memory Word:\n");
-	printf("Type: wmw (address) (value)\n");
-	printf("To use Dump Memory:\n");
-	printf("Type: dm (address) (number of bytes)\n");
+	printf("To send a sequence of characters:\n");
+	printf("Send (message to be sent)\n");
 }
 
 /**
@@ -33,22 +29,21 @@ static void console_help() {
  */
 void console_scan(void) {
 	char command[50];
-	int arg2;
-	int arg1;
+	char message[100];
 	int ret_val;
-	char userinput[100];
+	char userinput[150];
 
 	printf("> ");
 
-	fgets(userinput, 99, stdin);
+	fgets(userinput, 149, stdin);
 
-	ret_val = sscanf(userinput, "%s %i %i", command, &arg1, &arg2);
+	ret_val = sscanf(userinput, "%s %s", command, message);
 
 	if (!strcmp(command, "help")) {
 		console_help();
 	}
 	else if (!strcmp(command, "send")) {
-		// TODO: send arg1
+		// TODO: send message
 	}
 	else {
 		printf("Unsupported command: %s\n", command);
