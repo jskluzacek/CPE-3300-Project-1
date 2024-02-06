@@ -36,22 +36,3 @@ void led_on(int number) {
 	temp |= ((number & PB12TO15)<<1);		// isolate and prepend PB12-15 and skip PB11
 	gpiob->ODR = (temp<<5);					// shift final value into place and write to ODR
 }
-
-//TODO Fix if needed
-///**
-// * led_cycle:
-// * Cycles one led left to right repeatedly
-// */
-//void led_cycle(void) {
-//	int i = 1;
-//	while (i < (1<<9)) {
-//		led_on(i);
-//		delay_ms(100);
-//		i = i<<1;
-//	}
-//	while (i > 1) {
-//		led_on(i);
-//		delay_ms(100);
-//		i = i>>1;
-//	}
-//}

@@ -6,6 +6,7 @@
  * @brief          : Channel Monitor API
  *****************************************************************************/
 #include "stm32regs.h"
+#include "led.h"
 #include "channel_monitor.h"
 
 static volatile GPIOX* const gpioc = (GPIOX*) GPIOC_ADR;
@@ -139,6 +140,31 @@ void EXTI15_10_IRQHandler(void) {
 		}
 	default: break;
 	};
+
+	// update LEDs
+	char leds = 0;
+	switch (state) {
+	case IDLE: {
+		leds = IDLE_LED;
+		break;
+		}
+	case BUSY_LOW: {
+		leds = BUSY_LOW_LED;
+		break;
+		}
+	case BUSY_HIGH: {
+		leds = BUSY_HIGH_LED;
+		break;
+		}
+	case COLLISION: {
+		leds = COLL_LED;
+		break;
+		}
+	};
+	__asm("PUSH {r0-r12, lr}");
+	led_on(leds);
+	__asm("POP {r0-r12, lr}");
+	__asm("BX LR");
 
 	// start timer
 	tim2->CR1 |= (1<<0);

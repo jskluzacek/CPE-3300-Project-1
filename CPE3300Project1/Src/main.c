@@ -12,12 +12,16 @@
 #include "delay.h"
 #include "stm32regs.h"
 #include "console.h"
+#include "uart_driver.h"
+
 
 int main(void)
 {
 	/*** INITIALIZE API's ***/
 	led_init();
 	channel_monitor_init();
+	tx_init();
+	init_usart2(57600, CPU_FREQ);
 
 	// led test
 	for(int i = 20; i <= 50; i += 5) {
@@ -40,29 +44,7 @@ int main(void)
 	}
 
 	for(;;) {
-		int debug = 0;
-		int leds = 0;
-
-		// display current state
-		switch (get_state()) {
-		case IDLE: {
-			leds = IDLE_LED;
-			break;
-			}
-		case BUSY_LOW: {
-			leds = BUSY_LOW_LED;
-			break;
-			}
-		case BUSY_HIGH: {
-			leds = BUSY_HIGH_LED;
-			break;
-			}
-		case COLLISION: {
-			leds = COLL_LED;
-			break;
-			}
-		};
-		led_on(leds | debug);
+		console_scan();
 	}
 
 	return 0;
