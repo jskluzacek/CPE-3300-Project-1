@@ -3,7 +3,7 @@
  * @file           : console.h
  * @author         : Team Edward - Kenny Gifford and Jerico Skluzacek
  * @date		   : 02/04/24
- * @brief          : Methods to retrieve input from console
+ * @brief          : Header for console API
  *****************************************************************************/
 
 #ifndef _console_h

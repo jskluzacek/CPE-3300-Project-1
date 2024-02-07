@@ -1,15 +1,14 @@
 /******************************************************************************
  * @assignment	   : CPE3300 Project 1
- * @file           : console.h
+ * @file           : console.c
  * @author         : Team Edward - Kenny Gifford and Jerico Skluzacek
  * @date		   : 02/04/24
- * @brief          : Methods to retrieve input from console
+ * @brief          : API to retrieve input from USART console
  *****************************************************************************/
-
 #include <stdio.h>
 #include <string.h>
 #include "console.h"
-#include "transmit.h"
+#include "network.h"
 
 /**
  * console_help:

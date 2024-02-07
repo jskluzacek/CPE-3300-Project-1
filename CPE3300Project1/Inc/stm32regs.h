@@ -2,7 +2,7 @@
  * @assignment	   : CPE3300 Project 1
  * @file           : stm32regs.h
  * @author         : Team Edward - Kenny Gifford and Jerico Skluzacek
- * @date		   : 01/23/24
+ * @date		   : 02/06/24
  * @brief          : STM32 Register Offset Structures
  *****************************************************************************/
 #include <stdint.h>
@@ -14,12 +14,16 @@
 #define TIM2_ADR	0x40000000
 #define TIM3_ADR	0x40000400
 #define TIM4_ADR	0x40000800
+
 #define SYSCFG_ADR  0x40013800
 #define EXTI_ADR 	0x40013C00
+
 #define GPIOA_ADR 	0x40020000
 #define GPIOB_ADR 	0x40020400
 #define GPIOC_ADR 	0x40020800
+
 #define RCC_ADR 	0x40023800
+
 #define NVIC_ADR	0xE000E100
 
 // IRQ Positions Numbers
@@ -29,6 +33,32 @@
 #define TIM4n		30
 
 /***** STM32 REGISTER ACCESS *****/
+//TIMX
+typedef struct {
+	uint32_t CR1;
+	uint32_t CR2;
+	uint32_t SMCR;
+	uint32_t DIER;
+	uint32_t SR;
+	uint32_t EGR;
+	uint32_t CCMR1;
+	uint32_t CCMR2;
+	uint32_t CCER;
+	uint32_t CNT;
+	uint32_t PSC;
+	uint32_t ARR;
+	uint32_t reserved0;
+	uint32_t CCR1;
+	uint32_t CCR2;
+	uint32_t CCR3;
+	uint32_t CCR4;
+	uint32_t reserved1;
+	uint32_t DCR;
+	uint32_t DMAR;
+	uint32_t TIM2_OR;
+	uint32_t TIM5_OR;
+} TIMX;
+
 //SYSCFG
 typedef struct {
 	uint32_t MEMRMP;
@@ -103,32 +133,6 @@ typedef struct {
 	uint32_t reserved14;
 	uint32_t DCKCFGR;
 } RCC;
-
-//TIMX
-typedef struct {
-	uint32_t CR1;
-	uint32_t CR2;
-	uint32_t SMCR;
-	uint32_t DIER;
-	uint32_t SR;
-	uint32_t EGR;
-	uint32_t CCMR1;
-	uint32_t CCMR2;
-	uint32_t CCER;
-	uint32_t CNT;
-	uint32_t PSC;
-	uint32_t ARR;
-	uint32_t reserved0;
-	uint32_t CCR1;
-	uint32_t CCR2;
-	uint32_t CCR3;
-	uint32_t CCR4;
-	uint32_t reserved1;
-	uint32_t DCR;
-	uint32_t DMAR;
-	uint32_t TIM2_OR;
-	uint32_t TIM5_OR;
-} TIMX;
 
 //NVIC
 typedef struct {
