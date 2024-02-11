@@ -23,33 +23,111 @@ static volatile NVIC* const nvic = (NVIC*) NVIC_ADR;
 // state of the input signal Rx_data (pin PC12)
 static STATE state;
 
-// buffer of bytes to be encoded and transmitted on Tx_data (pin PC11)
-static unsigned char buffer[BUFFER_SIZE+1];
+static char rx_buffer_lock;
 
-// index of the current half bit of an encoded buffer
-static int half_bit_index = 0;
+// buffer of decoded bytes to be encoded and sent on Tx_data (pin PC11)
+static unsigned char tx_buffer[TX_BUFFER_SIZE+1];
+// buffer of encoded half-bytes read from Rx_data (pin PC12)
+static unsigned char rx_buffer[RX_BUFFER_SIZE+1];
+
+// index of next half-bit to be read from decoded buffer
+static int tx_index = 0;
+// index of next half-bit to be written to encoded buffer
+static int rx_index = 0;
 
 /******************** Public (non-init) Methods ********************/
 
 /**
  * tx_string:
  * Transmits up to 100 bytes over Tx_data (PC11) using Manchester
- * 		encoding and
- * pre-conditions:
- * parameters: none
+ * 		encoding.
+ * parameters: a string of bytes to encode and transmit over Tx_data
  * returns: none
  */
-void tx_string(const unsigned char str[]) {
-	strncpy(buffer, str, BUFFER_SIZE);
+void tx_string(const unsigned char input[]) {
+	strncpy(tx_buffer, input, TX_BUFFER_SIZE);
 
 	// busy wait for IDLE state
 	while (state != IDLE) {};
 
-	half_bit_index = 0;
+	tx_index = 0;
 
 	// start timer
 	tim3->CNT = 0;			// clear TIM3
 	tim3->CR1 |= (1<<0);	// enable TIM3
+}
+
+/**
+ * rx_string:
+ * Receives up to 100 bytes over Rx_data (PC12) using Manchester
+ * 		decoding and stores them in provided string location.
+ * parameters: a string destination to be written with decoded
+ * received bytes
+ * returns: none
+ */
+void rx_string(unsigned char output[]) {
+	memset(rx_buffer, 0, RX_BUFFER_SIZE+1);
+	rx_index = 0;
+	rx_buffer_lock = 0;
+
+	// busy wait until rx_buffer NOT being written
+	while (rx_buffer_lock == 0) {};
+
+	// account for first half bit being 1
+	if (rx_index % 2) {
+		// shift buffer by 1 bit and prepend '1'
+		for (int i = 0; i < RX_BUFFER_SIZE; i++) {
+			char prev_lsb, curr_lsb;
+			// store least significant bit
+			curr_lsb = rx_buffer[i] & 1;
+			// shift byte
+			rx_buffer[i] = rx_buffer[i] >> 1;
+			// first byte is prepended by '1' always
+			if (i == 0) {
+				prev_lsb = 1;
+			}
+			// prepend previous lsb as new msb
+			if (prev_lsb) {
+				rx_buffer[i] |= MSB;
+			}
+			prev_lsb = curr_lsb;
+		}
+	}
+
+	char invalid = 0;
+	int i = 0;
+	// iterate over half bits in rx_buffer
+	while (i < (RX_BUFFER_SIZE * 2 * 8) && !invalid) {
+		// write decoded bits to temp
+		char temp;
+		for (int j = 0; j < 8; j++) {
+			// temp decoded byte
+			temp = 0;
+			// first and second half bit of each decoded bit
+			char hb0, hb1;
+
+			// fetch half bits
+			hb0 = rx_buffer[i / 8] & (MSB >> (i % 8));
+			hb1 = rx_buffer[i / 8] & (MSB >> (++i % 8));
+
+			// decode half bits
+			if (hb0 && !hb1) {
+				temp &= !(MSB >> j);
+			} else if (!hb0 && hb1) {
+				temp |= (MSB >> j);
+			} else {
+				invalid = 1;
+				break;
+			}
+			i++;
+		}
+		// print decoded byte to console
+		console_print_char(temp);
+	}
+
+	if (invalid) {
+		printf("Invalid data\n");
+	}
 }
 
 /******************** Initializers ********************/
@@ -78,7 +156,7 @@ void tx_init(void) {
 	tim3->ARR = HALF_BIT_PERIOD;
 
 	/* Start at logic-1 */
-	gpioc->ODR |= (1<<11);
+	gpioc->ODR |= (1<<PC11);
 }
 
 /**
@@ -109,11 +187,7 @@ void rx_init(void) {
 	tim2->DIER |= (1<<0);		// enable TIM2 interrupt
 
 	/* Poll State */
-	if (gpioc->IDR & (1<<PC11)) {
-		state = IDLE;
-	} else {
-		state = COLLISION;
-	}
+	TIM2_IRQHandler();
 }
 
 /**
@@ -156,8 +230,8 @@ void TIM3_IRQHandler(void) {
 
 	// stop transmission on COLLISION state or end of encoded half-bits
 	if ((state == COLLISION) ||
-		(half_bit_index >= MAX_HALF_BITS) ||
-		(buffer[half_bit_index / (2 * 8)] == '\0'))
+		(tx_index >= TX_BUFFER_SIZE * 2 * 8) ||
+		(tx_buffer[tx_index / (2 * 8)] == '\0'))
 	{
 		tim3->CR1 &= ~(1<<0); 		// stop timer
 		gpioc->ODR |= (1<<PC11);	// reset Tx_data to 1
@@ -166,9 +240,9 @@ void TIM3_IRQHandler(void) {
 
 	/* Encode next half-bit */
 	// calculate index: 2 half-bits per bit, 8 bits per byte
-	char byte = buffer[half_bit_index / (2 * 8)];
+	char byte = tx_buffer[tx_index / (2 * 8)];
 	// isolate bit: 2 half-bits per bit, bits 0-7 of byte
-	char bit = byte & (MSB >> (half_bit_index / 2) % 8);
+	char bit = byte & (MSB >> (tx_index / 2) % 8);
 
 	/* Write to Tx_data */
 	// write 1 if:
@@ -177,13 +251,13 @@ void TIM3_IRQHandler(void) {
 	// write 0 if:
 	//		input bit is 0 and this is first half-bit
 	//		input bit is 1 and this is second half-bit
-	if ((bit && half_bit_index % 2) || (!bit && !(half_bit_index % 2))) {
-		gpioc->ODR |= (1<<11);	// write 1 to Tx_data
+	if ((bit && tx_index % 2) || (!bit && !(tx_index % 2))) {
+		gpioc->ODR |= (1<<PC11);	// write 1 to Tx_data
 	} else {
-		gpioc->ODR &= !(1<<11);	// write 0 to Tx_data
+		gpioc->ODR &= !(1<<PC11);	// write 0 to Tx_data
 	}
 
-	half_bit_index++;
+	tx_index++;
 }
 
 /**
@@ -243,22 +317,38 @@ void EXTI15_10_IRQHandler(void) {
 	case IDLE: {
 		state = BUSY_LOW;
 		tim2->ARR = COLL_TIME;
+		if (!rx_buffer_lock) {
+			rx_buffer[rx_index / 8] &= !(MSB >> (rx_index % 8));
+			rx_index++;
+		}
 		break;
 		}
 	case BUSY_LOW: {
 		state = BUSY_HIGH;
 		tim2->ARR = IDLE_TIME;
+		if (!rx_buffer_lock) {
+			rx_buffer[rx_index / 8] |= (MSB >> (rx_index % 8));
+			rx_index++;
+		}
 		break;
 		}
 	case BUSY_HIGH: {
 		state = BUSY_LOW;
 		tim2->ARR = COLL_TIME;
+		if (!rx_buffer_lock) {
+			rx_buffer[rx_index / 8] &= !(MSB >> (rx_index % 8));
+			rx_index++;
+		}
 		break;
 		}
 	case COLLISION: {
 		//TODO wait random amount of time before switching?
 		state = BUSY_HIGH;
 		tim2->ARR = IDLE_TIME;
+		if (!rx_buffer_lock) {
+			rx_buffer[rx_index / 8] |= (MSB >> (rx_index % 8));
+			rx_index++;
+		}
 		break;
 		}
 	default: break;
@@ -282,17 +372,12 @@ void TIM2_IRQHandler(void) {
 	tim2->CR1 &= ~(1<<0);
 
 	// update state
-	switch (state) {
-	case BUSY_LOW: {
-		state = COLLISION;
-		break;
-		}
-	case BUSY_HIGH: {
+	if (gpioc->IDR & (1<<PC12)) {
 		state = IDLE;
-		break;
-		}
-	default: break;
-	};
+		rx_buffer_lock = 1;
+	} else {
+		state = COLLISION;
+	}
 }
 
 

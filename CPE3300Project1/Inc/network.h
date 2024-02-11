@@ -22,8 +22,8 @@
 #define MSB 0x80	// most sig. bit of a byte
 
 /* Buffer Constraints */
-#define BUFFER_SIZE 100 // user input string length
-#define MAX_HALF_BITS BUFFER_SIZE * 2 * 8
+#define TX_BUFFER_SIZE 100 				// user input string length
+#define RX_BUFFER_SIZE TX_BUFFER_SIZE * 2
 
 /* LED Config */
 #define OUTPUT_MASK 0x55155400
