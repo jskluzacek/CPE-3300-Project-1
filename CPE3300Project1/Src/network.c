@@ -9,6 +9,7 @@
 #include "stm32regs.h"
 #include <string.h>
 
+/* Register Accesses */
 static volatile TIMX* const tim2 = (TIMX*) TIM2_ADR;
 static volatile TIMX* const tim3 = (TIMX*) TIM3_ADR;
 static volatile TIMX* const tim4 = (TIMX*) TIM4_ADR;
@@ -20,7 +21,7 @@ static volatile RCC* const rcc = (RCC*) RCC_ADR;
 static volatile NVIC* const nvic = (NVIC*) NVIC_ADR;
 
 // state of the input signal Rx_data (pin PC12)
-static STATE state = IDLE;
+static STATE state;
 
 // buffer of bytes to be encoded and transmitted on Tx_data (pin PC11)
 static unsigned char buffer[BUFFER_SIZE+1];
@@ -75,6 +76,9 @@ void tx_init(void) {
 
 	/* Pre-load Timer Duration */
 	tim3->ARR = HALF_BIT_PERIOD;
+
+	/* Start at logic-1 */
+	gpioc->ODR |= (1<<11);
 }
 
 /**
@@ -103,6 +107,13 @@ void rx_init(void) {
 	nvic->ISER1 |= (1<<(EXTI15_10n - 32));	// enable EXTI interrupt in NVIC
 	nvic->ISER0 |= (1<<TIM2n);	// enable TIM2 interrupt in NVIC
 	tim2->DIER |= (1<<0);		// enable TIM2 interrupt
+
+	/* Poll State */
+	if (gpioc->IDR & (1<<PC11)) {
+		state = IDLE;
+	} else {
+		state = COLLISION;
+	}
 }
 
 /**
@@ -134,33 +145,6 @@ void led_init(void) {
 /******************** IRQHandlers ********************/
 
 /**
- * TIM2_IRQHandler:
- * Handles Rx_data (PC12) timeouts and state change to IDLE/COLLISION
- * parameters: none
- * returns: none
- */
-void TIM2_IRQHandler(void) {
-	// clear UIF pending bit
-	tim2->SR &= ~(1<<0);
-
-	// stop timer (resets implicitly)
-	tim2->CR1 &= ~(1<<0);
-
-	// update state
-	switch (state) {
-	case BUSY_LOW: {
-		state = COLLISION;
-		break;
-		}
-	case BUSY_HIGH: {
-		state = IDLE;
-		break;
-		}
-	default: break;
-	};
-}
-
-/**
  * TIM3_IRQHandler:
  * Transmits encoded buffer as individual half-bits over Tx_data (PC11)
  * parameters: none
@@ -176,7 +160,7 @@ void TIM3_IRQHandler(void) {
 		(buffer[half_bit_index / (2 * 8)] == '\0'))
 	{
 		tim3->CR1 &= ~(1<<0); 		// stop timer
-		gpioc->ODR &= ~(1<<PC11);	// reset Tx_data to 0
+		gpioc->ODR |= (1<<PC11);	// reset Tx_data to 1
 		return;
 	}
 
@@ -250,9 +234,7 @@ void EXTI15_10_IRQHandler(void) {
 	// clear EXTI12 pending bit
 	exti->PR |= (1<<12);
 
-	//TODO temporarily disable interrupts to prevent race condition?
-
-	// pause and reset timer
+	// pause and reset timeout timer
 	tim2->CR1 &= ~(1<<0);
 	tim2->CNT = 0;
 
@@ -282,11 +264,36 @@ void EXTI15_10_IRQHandler(void) {
 	default: break;
 	};
 
-	// resume timer
+	// resume timeout timer
 	tim2->CR1 |= (1<<0);
 }
 
+/**
+ * TIM2_IRQHandler:
+ * Handles Rx_data (PC12) timeouts and state change to IDLE/COLLISION
+ * parameters: none
+ * returns: none
+ */
+void TIM2_IRQHandler(void) {
+	// clear UIF pending bit
+	tim2->SR &= ~(1<<0);
 
+	// stop timer (resets implicitly)
+	tim2->CR1 &= ~(1<<0);
+
+	// update state
+	switch (state) {
+	case BUSY_LOW: {
+		state = COLLISION;
+		break;
+		}
+	case BUSY_HIGH: {
+		state = IDLE;
+		break;
+		}
+	default: break;
+	};
+}
 
 
 
