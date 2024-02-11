@@ -22,6 +22,16 @@ static void console_help() {
 }
 
 /**
+ * console_print_char:
+ * Prints a given character to the console
+ * parameters: character to be printed
+ * returns: none
+ */
+void console_print_char(char val) {
+	printf(val);
+}
+
+/**
  * console_scan:
  * Retrieves user input and executes specified command
  * parameters: none
