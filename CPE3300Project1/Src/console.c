@@ -28,7 +28,7 @@ static void console_help() {
  * returns: none
  */
 void console_print_char(char val) {
-	printf(val);
+	printf("%c", val);
 }
 
 /**

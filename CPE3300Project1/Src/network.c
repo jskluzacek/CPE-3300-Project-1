@@ -23,8 +23,6 @@ static volatile NVIC* const nvic = (NVIC*) NVIC_ADR;
 // state of the input signal Rx_data (pin PC12)
 static STATE state;
 
-static char rx_buffer_lock;
-
 // buffer of decoded bytes to be encoded and sent on Tx_data (pin PC11)
 static unsigned char tx_buffer[TX_BUFFER_SIZE+1];
 // buffer of encoded half-bytes read from Rx_data (pin PC12)
@@ -65,13 +63,15 @@ void tx_string(const unsigned char input[]) {
  * received bytes
  * returns: none
  */
-void rx_string(unsigned char output[]) {
+void rx_string() {
 	memset(rx_buffer, 0, RX_BUFFER_SIZE+1);
 	rx_index = 0;
-	rx_buffer_lock = 0;
 
-	// busy wait until rx_buffer NOT being written
-	while (rx_buffer_lock == 0) {};
+	while (state == IDLE) {};
+	while (state != IDLE) {};
+
+
+	printf("%s", rx_buffer);
 
 	// account for first half bit being 1
 	if (rx_index % 2) {
@@ -94,28 +94,30 @@ void rx_string(unsigned char output[]) {
 		}
 	}
 
+	printf("%s", rx_buffer);
+
 	char invalid = 0;
 	int i = 0;
 	// iterate over half bits in rx_buffer
 	while (i < (RX_BUFFER_SIZE * 2 * 8) && !invalid) {
 		// write decoded bits to temp
-		char temp;
+		char temp = 0;
 		for (int j = 0; j < 8; j++) {
-			// temp decoded byte
-			temp = 0;
 			// first and second half bit of each decoded bit
 			char hb0, hb1;
 
 			// fetch half bits
 			hb0 = rx_buffer[i / 8] & (MSB >> (i % 8));
-			hb1 = rx_buffer[i / 8] & (MSB >> (++i % 8));
+			i++;
+			hb1 = rx_buffer[i / 8] & (MSB >> (i % 8));
 
 			// decode half bits
 			if (hb0 && !hb1) {
 				temp &= !(MSB >> j);
 			} else if (!hb0 && hb1) {
 				temp |= (MSB >> j);
-			} else {
+			} else if (!hb0 && !hb1) {
+				printf("reached half bits 00\n");
 				invalid = 1;
 				break;
 			}
@@ -317,38 +319,30 @@ void EXTI15_10_IRQHandler(void) {
 	case IDLE: {
 		state = BUSY_LOW;
 		tim2->ARR = COLL_TIME;
-		if (!rx_buffer_lock) {
-			rx_buffer[rx_index / 8] &= !(MSB >> (rx_index % 8));
-			rx_index++;
-		}
+		rx_buffer[rx_index / 8] &= !(MSB >> (rx_index % 8));
+		rx_index++;
 		break;
 		}
 	case BUSY_LOW: {
 		state = BUSY_HIGH;
 		tim2->ARR = IDLE_TIME;
-		if (!rx_buffer_lock) {
-			rx_buffer[rx_index / 8] |= (MSB >> (rx_index % 8));
-			rx_index++;
-		}
+		rx_buffer[rx_index / 8] |= (MSB >> (rx_index % 8));
+		rx_index++;
 		break;
 		}
 	case BUSY_HIGH: {
 		state = BUSY_LOW;
 		tim2->ARR = COLL_TIME;
-		if (!rx_buffer_lock) {
-			rx_buffer[rx_index / 8] &= !(MSB >> (rx_index % 8));
-			rx_index++;
-		}
+		rx_buffer[rx_index / 8] &= !(MSB >> (rx_index % 8));
+		rx_index++;
 		break;
 		}
 	case COLLISION: {
 		//TODO wait random amount of time before switching?
 		state = BUSY_HIGH;
 		tim2->ARR = IDLE_TIME;
-		if (!rx_buffer_lock) {
-			rx_buffer[rx_index / 8] |= (MSB >> (rx_index % 8));
-			rx_index++;
-		}
+		rx_buffer[rx_index / 8] |= (MSB >> (rx_index % 8));
+		rx_index++;
 		break;
 		}
 	default: break;
@@ -374,7 +368,6 @@ void TIM2_IRQHandler(void) {
 	// update state
 	if (gpioc->IDR & (1<<PC12)) {
 		state = IDLE;
-		rx_buffer_lock = 1;
 	} else {
 		state = COLLISION;
 	}
