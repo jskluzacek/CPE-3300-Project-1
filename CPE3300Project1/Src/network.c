@@ -107,7 +107,7 @@ void rx_string() {
 			hb0 = rx_buffer[i / 8] & (MSB >> (i % 8));
 			i++;
 			hb1 = rx_buffer[i / 8] & (MSB >> (i % 8));
-
+			i++;
 			// decode half bits
 			if (hb0 && !hb1) {
 				temp &= ~(MSB >> j);
@@ -118,10 +118,23 @@ void rx_string() {
 				invalid = 1;
 				break;
 			}
-			i++;
+
+			for (int k = 0; k < 8; k++) {
+				printf("%c", temp & (MSB >> k) ? '1' : '0');
+			}
+			printf(" ");
 		}
 		// print decoded byte to console
 		console_print_char(temp);
+	}
+	printf("\n");
+
+	// print buffer
+	for (int i = 0; i < RX_BUFFER_SIZE; i++) {
+		printf("%c", (rx_buffer[i / 8] & (MSB >> (i % 8)) ? '1' : '0'));
+		if (i % 8 == 7) {
+			printf(" ");
+		}
 	}
 	printf("\n");
 
