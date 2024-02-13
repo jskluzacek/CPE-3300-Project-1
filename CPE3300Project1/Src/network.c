@@ -67,49 +67,26 @@ void tx_string(const unsigned char input[]) {
  */
 void rx_string() {
 	memset(rx_buffer, 0, RX_BUFFER_SIZE+1);
-	rx_index = 0;
+
+	// write half bit 1 to MSB of buffer
+	rx_index = 1;
+	rx_buffer[0] |= MSB;
+
 	buffer_state = UNLOCKED;
 
 	// busy wait until message starts
 	while (state == IDLE) {};
 	// busy wait until message is complete
 	while (state != IDLE) {
-		printf("%d", rx_index);
+		printf("%d ", rx_index);
 	};
+	printf("\n");
 
 	buffer_state = LOCKED;
 
+	// print buffer
 	for (int i = 0; i < RX_BUFFER_SIZE; i++) {
 		printf("%c", (rx_buffer[i / 8] & (MSB >> (i % 8)) ? '1' : '0'));
-		if (i % 8 == 7) {
-			printf(" ");
-		}
-	}
-	printf("\n");
-
-	// account for first half bit being 1
-	if (rx_index % 2) {
-		// shift buffer by 1 bit and prepend '1'
-		for (int i = 0; i < RX_BUFFER_SIZE; i++) {
-			char prev_lsb, curr_lsb;
-			// store least significant bit
-			curr_lsb = rx_buffer[i] & 1;
-			// shift byte
-			rx_buffer[i] = rx_buffer[i] >> 1;
-			// first byte is prepended by '1' always
-			if (i == 0) {
-				prev_lsb = 1;
-			}
-			// prepend previous lsb as new msb
-			if (prev_lsb) {
-				rx_buffer[i] |= MSB;
-			}
-			prev_lsb = curr_lsb;
-		}
-	}
-
-	for (int i = 0; i < RX_BUFFER_SIZE; i++) {
-		printf("%c", rx_buffer[i / 8] & (MSB >> (i % 8)) ? '1' : '0');
 		if (i % 8 == 7) {
 			printf(" ");
 		}
@@ -133,11 +110,11 @@ void rx_string() {
 
 			// decode half bits
 			if (hb0 && !hb1) {
-				temp &= !(MSB >> j);
+				temp &= ~(MSB >> j);
 			} else if (!hb0 && hb1) {
 				temp |= (MSB >> j);
 			} else if (!hb0 && !hb1) {
-				printf("reached half bits 00\n");
+				printf("\nreached half bits 00\n");
 				invalid = 1;
 				break;
 			}
@@ -146,10 +123,7 @@ void rx_string() {
 		// print decoded byte to console
 		console_print_char(temp);
 	}
-
-	if (invalid) {
-		printf("Invalid data\n");
-	}
+	printf("\n");
 
 	buffer_state = UNLOCKED;
 }
@@ -286,7 +260,7 @@ void TIM3_IRQHandler(void) {
 	if ((bit && tx_index % 2) || (!bit && !(tx_index % 2))) {
 		gpioc->ODR |= (1<<PC11);	// write 1 to Tx_data
 	} else {
-		gpioc->ODR &= !(1<<PC11);	// write 0 to Tx_data
+		gpioc->ODR &= ~(1<<PC11);	// write 0 to Tx_data
 	}
 
 	tx_index++;
@@ -368,10 +342,14 @@ void EXTI15_10_IRQHandler(void) {
 		//TODO wait random amount of time before switching?
 		state = BUSY_HIGH;
 		tim2->ARR = IDLE_TIME;
+		if (buffer_state == UNLOCKED) {
+			tim5->CR1 |= (1<<0);
+		}
 		break;
 		}
 	default: break;
 	};
+	tim5->CNT = HALF_BIT_PERIOD / 2;
 
 	// resume timeout timer
 	tim2->CR1 |= (1<<0);
@@ -392,11 +370,19 @@ void TIM2_IRQHandler(void) {
 
 	// update state
 	if (gpioc->IDR & (1<<PC12)) {
-		tim5->CR1 &= !(1<<0);
 		state = IDLE;
+		if (rx_index % 2 == 0) {
+			rx_index--;
+			rx_buffer[rx_index / 8] &= ~(MSB >> (rx_index % 8));
+		}
+		rx_index--;
+		rx_buffer[rx_index / 8] &= ~(MSB >> (rx_index % 8));
 	} else {
 		state = COLLISION;
+		// erase 2 invalid half bit 0's
+		rx_index -= 2;
 	}
+	tim5->CR1 &= ~(1<<0);
 }
 
 /**
@@ -405,12 +391,12 @@ void TIM2_IRQHandler(void) {
  */
 void TIM5_IRQHandler(void) {
 	// clear UIF pending bit
-	tim5->SR &= !(1<<0);
+	tim5->SR &= ~(1<<0);
 
 	if (gpioc->IDR & (1<<PC12)) {
 		rx_buffer[rx_index / 8] |= (MSB >> (rx_index % 8));
 	} else {
-		rx_buffer[rx_index / 8] &= !(MSB >> (rx_index % 8));
+		rx_buffer[rx_index / 8] &= ~(MSB >> (rx_index % 8));
 	}
 	rx_index++;
 }

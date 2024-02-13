@@ -19,10 +19,11 @@ int main(void)
 	led_init();
 	init_usart2(57600, CPU_FREQ);
 
-	rx_string();
+
 
 	for(;;) {
-		console_scan();
+		rx_string();
+//		console_scan();
 	}
 
 	return 0;
