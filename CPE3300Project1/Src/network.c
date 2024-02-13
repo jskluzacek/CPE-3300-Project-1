@@ -74,9 +74,9 @@ void rx_string() {
 
 	buffer_state = UNLOCKED;
 
-	// busy wait until message starts
+	// busy wait until message starts (leaving idle)
 	while (state == IDLE) {};
-	// busy wait until message is complete
+	// busy wait until message is complete (returning to idle)
 	while (state != IDLE) {
 		printf("%d ", rx_index);
 	};
@@ -114,27 +114,17 @@ void rx_string() {
 			} else if (!hb0 && hb1) {
 				temp |= (MSB >> j);
 			} else if (!hb0 && !hb1) {
-				printf("\nreached half bits 00\n");
+				printf("\nreached half bits 00 index j:%d index i:%d\n", j, i);
+				invalid = 1;
+				break;
+			} else if (hb0 && hb1) {
+				printf("\nreached half bits 11 index j:%d index i:%d\n", j, i);
 				invalid = 1;
 				break;
 			}
-
-			for (int k = 0; k < 8; k++) {
-				printf("%c", temp & (MSB >> k) ? '1' : '0');
-			}
-			printf(" ");
 		}
 		// print decoded byte to console
 		console_print_char(temp);
-	}
-	printf("\n");
-
-	// print buffer
-	for (int i = 0; i < RX_BUFFER_SIZE; i++) {
-		printf("%c", (rx_buffer[i / 8] & (MSB >> (i % 8)) ? '1' : '0'));
-		if (i % 8 == 7) {
-			printf(" ");
-		}
 	}
 	printf("\n");
 
@@ -384,16 +374,20 @@ void TIM2_IRQHandler(void) {
 	// update state
 	if (gpioc->IDR & (1<<PC12)) {
 		state = IDLE;
-		if (rx_index % 2 == 0) {
+		if (buffer_state == UNLOCKED) {
+			if (rx_index % 2 == 0) {
+				rx_index--;
+				rx_buffer[rx_index / 8] &= ~(MSB >> (rx_index % 8));
+			}
 			rx_index--;
 			rx_buffer[rx_index / 8] &= ~(MSB >> (rx_index % 8));
 		}
-		rx_index--;
-		rx_buffer[rx_index / 8] &= ~(MSB >> (rx_index % 8));
 	} else {
 		state = COLLISION;
 		// erase 2 invalid half bit 0's
-		rx_index -= 2;
+		if (buffer_state == UNLOCKED) {
+			rx_index -= 2;
+		}
 	}
 	tim5->CR1 &= ~(1<<0);
 }
