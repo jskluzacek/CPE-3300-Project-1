@@ -386,7 +386,10 @@ void TIM2_IRQHandler(void) {
 		state = COLLISION;
 		// erase 2 invalid half bit 0's
 		if (buffer_state == UNLOCKED) {
-			rx_index -= 2;
+			rx_index--;
+			rx_buffer[rx_index / 8] &= ~(MSB >> (rx_index % 8));
+			rx_index--;
+			rx_buffer[rx_index / 8] &= ~(MSB >> (rx_index % 8));
 		}
 	}
 	tim5->CR1 &= ~(1<<0);
