@@ -14,6 +14,7 @@
 #define TIM2_ADR	0x40000000
 #define TIM3_ADR	0x40000400
 #define TIM4_ADR	0x40000800
+#define TIM5_ADR	0x40000C00
 
 #define SYSCFG_ADR  0x40013800
 #define EXTI_ADR 	0x40013C00
@@ -31,6 +32,7 @@
 #define TIM2n		28
 #define TIM3n		29
 #define TIM4n		30
+#define TIM5n		50
 
 /***** STM32 REGISTER ACCESS *****/
 //TIMX

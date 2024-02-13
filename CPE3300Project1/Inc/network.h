@@ -44,6 +44,11 @@ typedef enum {
 	 COLLISION
 } STATE;
 
+typedef enum {
+	LOCKED,
+	UNLOCKED
+} BUFFER_STATE;
+
 void tx_string(const unsigned char str[]);
 void tx_init(void);
 void rx_init(void);
