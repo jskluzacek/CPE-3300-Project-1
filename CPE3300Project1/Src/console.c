@@ -53,7 +53,6 @@ void console_scan(void) {
 		console_help();
 	}
 	else if (!strcmp(command, "send")) {
-		// TODO: send message
 		tx_string(message);
 	}
 	else {

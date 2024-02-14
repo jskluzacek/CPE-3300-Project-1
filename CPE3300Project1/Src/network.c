@@ -77,24 +77,13 @@ void rx_string() {
 	// busy wait until message starts (leaving idle)
 	while (state == IDLE) {};
 	// busy wait until message is complete (returning to idle)
-	while (state != IDLE) {
-		printf("%d ", rx_index);
-	};
-	printf("\n");
+	while (state != IDLE) {};
 
 	buffer_state = LOCKED;
 
-	// print buffer
-	for (int i = 0; i < RX_BUFFER_SIZE; i++) {
-		printf("%c", (rx_buffer[i / 8] & (MSB >> (i % 8)) ? '1' : '0'));
-		if (i % 8 == 7) {
-			printf(" ");
-		}
-	}
-	printf("\n");
-
 	char invalid = 0;
 	int i = 0;
+
 	// iterate over half bits in rx_buffer
 	while (i < (RX_BUFFER_SIZE * 2 * 8) && !invalid) {
 		// write decoded bits to temp
@@ -108,17 +97,17 @@ void rx_string() {
 			i++;
 			hb1 = rx_buffer[i / 8] & (MSB >> (i % 8));
 			i++;
+
 			// decode half bits
+			// if invalid data, break out
 			if (hb0 && !hb1) {
 				temp &= ~(MSB >> j);
 			} else if (!hb0 && hb1) {
 				temp |= (MSB >> j);
 			} else if (!hb0 && !hb1) {
-				printf("\nreached half bits 00 index j:%d index i:%d\n", j, i);
 				invalid = 1;
 				break;
 			} else if (hb0 && hb1) {
-				printf("\nreached half bits 11 index j:%d index i:%d\n", j, i);
 				invalid = 1;
 				break;
 			}
@@ -126,7 +115,6 @@ void rx_string() {
 		// print decoded byte to console
 		console_print_char(temp);
 	}
-	printf("\n");
 
 	buffer_state = UNLOCKED;
 }
@@ -374,6 +362,7 @@ void TIM2_IRQHandler(void) {
 	// update state
 	if (gpioc->IDR & (1<<PC12)) {
 		state = IDLE;
+
 		if (buffer_state == UNLOCKED) {
 			if (rx_index % 2 == 0) {
 				rx_index--;
@@ -384,6 +373,7 @@ void TIM2_IRQHandler(void) {
 		}
 	} else {
 		state = COLLISION;
+
 		// erase 2 invalid half bit 0's
 		if (buffer_state == UNLOCKED) {
 			rx_index--;
@@ -397,7 +387,9 @@ void TIM2_IRQHandler(void) {
 
 /**
  * TIM5_IRQHandler:
- *
+ * Translates incoming bits every 500 us into rx_buffer
+ * parameters: none
+ * returns: none
  */
 void TIM5_IRQHandler(void) {
 	// clear UIF pending bit
@@ -408,6 +400,7 @@ void TIM5_IRQHandler(void) {
 	} else {
 		rx_buffer[rx_index / 8] &= ~(MSB >> (rx_index % 8));
 	}
+
 	rx_index++;
 }
 
