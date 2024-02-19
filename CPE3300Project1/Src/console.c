@@ -27,8 +27,18 @@ static void console_help() {
  * parameters: character to be printed
  * returns: none
  */
-void console_print_char(char val) {
-	printf("%c", val);
+void console_print_char(char ch) {
+	printf("%c", ch);
+}
+
+/**
+ * console_print_str:
+ * Prints a given string to the console
+ * parameters: string to be printed
+ * returns: none
+ */
+void console_print_str(const char str[]) {
+	printf("%s\n", str);
 }
 
 /**

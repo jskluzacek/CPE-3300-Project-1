@@ -22,8 +22,8 @@
 #define MSB 0x80	// most sig. bit of a byte
 
 /* Buffer Constraints */
-#define TX_BUFFER_SIZE 256 				// user input string length
-#define RX_BUFFER_SIZE 256 * 2
+#define TX_BUFFER_SIZE 256 	// input string length
+#define RX_BUFFER_SIZE 5 + 255 + 1	// output string length
 
 /* LED Config */
 #define OUTPUT_MASK 0x55155400
@@ -49,13 +49,11 @@ typedef enum {
 	UNLOCKED
 } BUFFER_STATE;
 
-void tx_string(const unsigned char str[]);
+void tx_string(const unsigned char input[]);
+void rx_string();
+
 void tx_init(void);
 void rx_init(void);
 void led_init(void);
-void TIM2_IRQHandler(void);
-void TIM3_IRQHandler(void);
-void TIM4_IRQHandler(void);
-void EXTI15_10_IRQHandler(void);
 
 #endif /* NETWORK_H_ */

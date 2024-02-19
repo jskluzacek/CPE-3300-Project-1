@@ -12,5 +12,6 @@
 // prototypes
 void console_scan(void);
 void console_print_char(char);
+void console_print_str(const char str[]);
 
 #endif // console.h
