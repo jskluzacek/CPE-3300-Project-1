@@ -7,6 +7,7 @@
  *****************************************************************************/
 #include "network.h"
 #include "stm32regs.h"
+#include "console.h"
 #include <stdlib.h>
 #include <string.h>
 
@@ -33,6 +34,7 @@ static unsigned char rx_buffer[RX_BUFFER_SIZE+1];
 static char hb0;
 // number of attempts at transmitting a message (-1 if no message waiting)
 static char tx_attempts;
+static char length;
 
 // half-bits transmitted (increments once per TIM3_IRQHandler)
 static size_t tx_index;
@@ -45,26 +47,28 @@ static size_t rx_index;
  * calc_crc:
  * Performs the Cyclic Redundancy Check with given message and divisor
  * parameters:
- * 		msg - message to check
+ * 		msg - message to check (not including header)
  * 	 length - length of message in bytes
- * 	divisor - the predetermined CRC divisor
- * returns: the remainder of the CRC
+ * returns: the remainder of the CRC operation
  */
-char calc_crc(const char* msg, char length, char divisor) {
-    char crc = 0;
+char calc_crc(const char* msg, char length) {
+	// make room for CRC at end of msg
+    char temp[length + 1];
+    strncpy(temp, msg, length);
+    temp[length] = 0x00;
 
-    // iterate over bits of message
-    for (int i = 0; i < (length * 8); i++) {
-        if (crc & MSB) {
-        	// crc = shifted crc xor'd with predetermined divisor
-        	crc = (crc << 1) ^ divisor;
-        } else {
-        	// shift crc
-        	crc <<= 1;
-        	// append next bit as LSB of crc
-        	crc |= msg[i / 8] | (MSB >> (i % 8));
+    char crc = 0;
+    for (int i = 0; i < length; i++) {
+        crc ^= temp[i];
+        for (int j = 0; j < 8; j++) {
+            if (crc & MSB) {
+                crc = (crc << 1) ^ CRC_DIVISOR;
+            } else {
+                crc = (crc << 1);
+            }
         }
     }
+
     return crc;
 }
 
@@ -97,7 +101,7 @@ void verify_message(const char* msg) {
 		console_print_str("Invalid CRC Flag\n");
 	}
 	if (crc_flag) {
-		if (calc_crc(msg[5], length, 0x87) != 0) {
+		if (calc_crc(msg[5], length) != 0) {
 			// calculated crc should match given crc
 			console_print_str("CRC failed\n");
 		}
@@ -112,31 +116,48 @@ void verify_message(const char* msg) {
 
 /**
  * tx_string:
- * Transmits up to 100 bytes over Tx_data (PC11) using Manchester
+ * Transmits up to 255 bytes over Tx_data (PC11) using Manchester
  * 		encoding.
  * parameters:
  *    input - string of bytes to encode and transmit over Tx_data
  * returns: none
  */
-void tx_string(const unsigned char input[]) {
-	// TODO verify buffer/message sizes and ending indexes are correct, could cause issues!
-	strncpy(tx_buffer, input, TX_BUFFER_SIZE);
+void tx_string(const char msg[]) {
+	/* Verify input */
+	if (strlen(msg) > 0xFF) {
+		console_print_str("User string is too long.\n");
+		return;
+	}
 
-	/* Configure */
-	tx_index = 0;	// read from beginning of buffer
-	tim3->CNT = 0;					// restart timer
-	tim3->ARR = HALF_BIT_PERIOD;	// reset timer duration
+	/* Format message */
+	length = strlen(msg);
+	tx_buffer[0] = 0x55;				// 0: preamble
+	tx_buffer[1] = 0x01;				// 1: source_adr
+	tx_buffer[2] = 0x02;				// 2: dest_adr
+	tx_buffer[3] = length;				// 3: length
+	tx_buffer[4] = 0x01;				// 4: crc_flag
+	strncpy(tx_buffer + 5, msg, length);// 5+: message
+
+	// crc_trailer
+	tx_buffer[5 + length] = tx_buffer[4] ? calc_crc(msg, length) : 0xAA;
+	tx_buffer[TX_BUFFER_SIZE-1] = '\0';	// LSB: null terminator
+
+	/* Configure tx */
+	tx_attempts = 0;					// first tx attempt
+	tx_index = 0;						// read from beginning of buffer
+	tim3->CNT = 0;						// restart timer
+	tim3->ARR = HALF_BIT_PERIOD;		// reset timer duration
 
 	// busy wait for IDLE state to begin transmission
 	while (state != IDLE) {};
 
 	/* Transmit */
-	tim3->CR1 |= (1<<0);			// start timer
+	tim3->CR1 |= (1<<0);				// start timer
 }
 
 /**
  * rx_string:
- * Receives, decodes, and displays up to 256 bytes over Rx_data (PC12)
+ * Receives, decodes, and displays up to 255 bytes over Rx_data (PC12)
  * parameters: none
  * returns: none
  */
@@ -149,17 +170,20 @@ void rx_string() {
 	hb0 = 1;
 	rx_index = 1;
 
-	/* Start Sampling */
-	tim5->CR1 |= (1<<0);
+//	/* Start Sampling */
+//	tim5->CR1 |= (1<<0);
 
 	// busy wait until message starts (leaving idle)
 	while (state == IDLE) {};
+
+	/* Start Sampling */
+	tim5->CR1 |= (1<<0);
 
 	// busy wait until message is complete (returning to idle)
 	while (state != IDLE) {};
 
 	/* Print Message */
-	console_print_str(rx_buffer);
+	printf("Message received: %s\n", rx_buffer);
 
 	/* Verify Message */
 	verify_message(rx_buffer);
@@ -193,6 +217,9 @@ void tx_init(void) {
 
 	/* Start at logic-1 */
 	gpioc->ODR |= (1<<PC11);
+
+	// no message to send
+	tx_attempts = -1;
 }
 
 /**
@@ -276,28 +303,22 @@ void EXTI15_10_IRQHandler(void) {
 	exti->PR |= (1<<12);
 
 	// stop and reset timeout timer
-//	tim2->CR1 &= ~(1<<0); TODO unnecessary because timeout timer should run constantly and this method won't take too long
+	tim2->CR1 &= ~(1<<0); // TODO unnecessary because timeout timer should run constantly and this method won't take too long
 	tim2->CNT = 0;
-
-	/* Update State */
-//	if (state == COLLISION || state == BUSY_LOW) {
-//		// previous state was COLLISION or BUSY_LOW
-//		state = BUSY_HIGH;
-//		tim2->ARR = IDLE_TIME;
-//	} else {
-//		// previous state was IDLE or BUSY_HIGH
-//		state = BUSY_LOW;
-//		tim2->ARR = COLL_TIME;
-//	}
 
     switch (state) {
         case COLLISION: {
-        	/* Attempt retransmission */
-			if (tx_attempts != -1 && tx_attempts < 10) {
+        	/* Attempt retransmission? */
+			if (tx_attempts >= 0 && tx_attempts < TX_ATTEMPTS_MAX) {
+				/* Calculate back-off duration */
+				int n = rand() % N_MAX + 1; // n is between 1 and N_MAX
+				int rand_time = ((double) n / N_MAX) * CPU_FREQ;
+				tim3->ARR = rand_time;  	// delay transmission interrupt's next call
+
+				/* Begin retransmission (after rand delay) */
 				tx_attempts++;
-				tx_index = 0;					// read from beginning of buffer
-				tim3->ARR = HALF_BIT_PERIOD;	// return to normal functionality
-				tim3->CR1 |= (1<<0);			//
+				tx_index = 0;				// read from beginning of buffer
+				tim3->CR1 |= (1<<0);		// start transmission
 			}
 			state = BUSY_HIGH;
 			tim2->ARR = IDLE_TIME;
@@ -327,8 +348,8 @@ void EXTI15_10_IRQHandler(void) {
 	// realign sampling timer to halfway through half-bit period
 	tim5->CNT = HALF_BIT_PERIOD / 2;
 
-//	// start timeout timer
-//	tim2->CR1 |= (1<<0); TODO unnecessary
+	// start timeout timer
+	tim2->CR1 |= (1<<0); // TODO unnecessary
 }
 
 /**
@@ -341,11 +362,11 @@ void TIM2_IRQHandler(void) {
 	// clear UIF pending bit
 	tim2->SR &= ~(1<<0);
 
-//	// stop timeout timer
-//	tim2->CR1 &= ~(1<<0); TODO can run constantly
+	// stop timeout timer
+	tim2->CR1 &= ~(1<<0); // TODO can run constantly
 
-//	// stop sampling timer
-//	tim5->CR1 &= ~(1<<0); TODO sampling can run constantly since it has no effects in idle/collision
+	// stop sampling timer
+	tim5->CR1 &= ~(1<<0); // TODO sampling can run constantly since it has no effects in idle/collision
 
 	// update state
 	if (gpioc->IDR & (1<<PC12)) {
@@ -355,10 +376,6 @@ void TIM2_IRQHandler(void) {
 		/* Stop transmission */
 		tim3->CR1 &= ~(1<<0);		// stop timer
 		gpioc->ODR |= (1<<PC11);	// reset Tx_data to 1
-		/* Calculate back-off duration */
-		int n = rand() % N_MAX + 1; // n is between 1 and N_MAX
-		int rand_time = ((double) n / N_MAX) * CPU_FREQ;
-		tim3->ARR = rand_time;  	// delay transmission interrupt's next call
 	}
 }
 
@@ -373,11 +390,16 @@ void TIM3_IRQHandler(void) {
 	tim3->SR &= ~(1<<0);
 
 	/* End transmission? */
-	if (tx_buffer[tx_index / (2*8)] == '\0') { // TODO make sure buffer has 0 at end!
+	if (tx_index >= (5+length+1) * 2 * 8) {
 		tim3->CR1 &= ~(1<<0);		// stop timer
 		gpioc->ODR |= (1<<PC11);	// reset Tx_data to 1
 		tx_attempts = -1;			// finished message
 		return;
+	}
+
+	/* Reset after random wait */
+	if (tim3->ARR != HALF_BIT_PERIOD) {
+		tim3->ARR = HALF_BIT_PERIOD;
 	}
 
 	/* Encode and transmit half-bit */
@@ -408,28 +430,32 @@ void TIM5_IRQHandler(void) {
 	// clear UIF pending bit
 	tim5->SR &= ~(1<<0);
 
-	// when receiving every other half-bit...
-	if (rx_index % 2 == 1) {
-		// store second half-bit
-		char hb1 = gpioc->IDR & (1<<PC12);
+	if (state != COLLISION && state != IDLE) {
+		// when receiving every other half-bit...
+		if (rx_index % 2 == 1) {
+			// store second half-bit
+			char hb1 = gpioc->IDR & (1<<PC12);
 
-		/* Decode half-bits */
-		if (hb0 && !hb1) {
-			// half-bits '10' become '0'
-			rx_buffer[rx_index / (2*8)] &= ~(MSB >> ((rx_index / 2) % 8));
-		} else if (!hb0 && hb1) {
-			// half bits '01' become '1'
-			rx_buffer[rx_index / (2*8)] |= (MSB >> ((rx_index / 2) % 8));
-		} else if (hb0 && hb1) {
-			// TODO in idle state. do nothing?
-		} else if (!hb0 && !hb1) {
-			// TODO in collision state. do nothing?
+			/* Decode half-bits */
+			if (hb0 && !hb1) {
+				// half-bits '10' become '0'
+				rx_buffer[rx_index / (2*8)] &= ~(MSB >> ((rx_index / 2) % 8));
+			} else if (!hb0 && hb1) {
+				// half bits '01' become '1'
+				rx_buffer[rx_index / (2*8)] |= (MSB >> ((rx_index / 2) % 8));
+			} else if (hb0 && hb1) {
+				return;
+				// TODO in idle state. do nothing?
+			} else if (!hb0 && !hb1) {
+				return;
+				// TODO in collision state. do nothing?
+			}
+		} else {
+			// store first half-bit
+			hb0 = gpioc->IDR & (1<<PC12);
 		}
-	} else {
-		// store first half-bit
-		hb0 = gpioc->IDR & (1<<PC12);
+		rx_index++;
 	}
-	rx_index++;
 }
 
 /**

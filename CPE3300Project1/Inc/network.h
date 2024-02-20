@@ -23,8 +23,12 @@
 #define MSB 0x80	// most sig. bit of a byte
 
 /* Buffer Constraints */
-#define TX_BUFFER_SIZE 256 	// input string length
+#define TX_BUFFER_SIZE 5 + 255 + 1 	// input string length
 #define RX_BUFFER_SIZE 5 + 255 + 1	// output string length
+
+/* Transmission */
+#define TX_ATTEMPTS_MAX 10
+#define CRC_DIVISOR 0x107
 
 /* LED Config */
 #define OUTPUT_MASK 0x55155400
@@ -50,7 +54,7 @@ typedef enum {
 	UNLOCKED
 } BUFFER_STATE;
 
-void tx_string(const unsigned char input[]);
+void tx_string(const char input[]);
 void rx_string();
 
 void tx_init(void);
