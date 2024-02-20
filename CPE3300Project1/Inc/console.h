@@ -11,7 +11,7 @@
 
 // Constants
 #define MESSAGE_LEN 255
-#define COMMAND_LEN
+#define COMMAND_LEN	50
 
 // prototypes
 void console_scan(void);
