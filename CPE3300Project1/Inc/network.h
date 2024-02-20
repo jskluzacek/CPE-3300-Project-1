@@ -15,6 +15,7 @@
 #define IDLE_TIME	0.00113 * CPU_FREQ 	// idle timeout is 1.13ms
 #define IDEAL_BIT_PERIOD 0.001 * CPU_FREQ		// period for each bit is 1ms
 #define HALF_BIT_PERIOD	IDEAL_BIT_PERIOD / 2	// transmitted half-bit period
+#define N_MAX	200	// n_max for random wait time calculation
 
 /* Bit Constants */
 #define PC11 11 	// Tx pin

@@ -7,6 +7,7 @@
  *****************************************************************************/
 #include "network.h"
 #include "stm32regs.h"
+#include <stdlib.h>
 #include <string.h>
 
 /* Register Accesses */
@@ -28,7 +29,10 @@ static STATE state;
 static unsigned char tx_buffer[TX_BUFFER_SIZE+1];
 // buffer of encoded bits received from Rx_data (pin PC12)
 static unsigned char rx_buffer[RX_BUFFER_SIZE+1];
+// first half-bit of pair received by TIM5_IRQHandler
 static char hb0;
+// number of attempts at transmitting a message (-1 if no message waiting)
+static char tx_attempts;
 
 // half-bits transmitted (increments once per TIM3_IRQHandler)
 static size_t tx_index;
@@ -93,7 +97,7 @@ void verify_message(const char* msg) {
 		console_print_str("Invalid CRC Flag\n");
 	}
 	if (crc_flag) {
-		if (calc_crc(msg[5], length, 0x87) != crc_trailer) {
+		if (calc_crc(msg[5], length, 0x87) != 0) {
 			// calculated crc should match given crc
 			console_print_str("CRC failed\n");
 		}
@@ -273,20 +277,53 @@ void EXTI15_10_IRQHandler(void) {
 
 	// stop and reset timeout timer
 //	tim2->CR1 &= ~(1<<0); TODO unnecessary because timeout timer should run constantly and this method won't take too long
-	tim2->CNT = 0;	// TODO high priority so timeout does not occur during this method
+	tim2->CNT = 0;
 
 	/* Update State */
-	if (state == COLLISION || state == BUSY_LOW) {
-		// previous state was COLLISION or BUSY_LOW
-		state = BUSY_HIGH;
-		tim2->ARR = IDLE_TIME;
-	} else {
-		// previous state was IDLE or BUSY_HIGH
-		state = BUSY_LOW;
-		tim2->ARR = COLL_TIME;
-	}
+//	if (state == COLLISION || state == BUSY_LOW) {
+//		// previous state was COLLISION or BUSY_LOW
+//		state = BUSY_HIGH;
+//		tim2->ARR = IDLE_TIME;
+//	} else {
+//		// previous state was IDLE or BUSY_HIGH
+//		state = BUSY_LOW;
+//		tim2->ARR = COLL_TIME;
+//	}
 
-	// TODO low priority so can happen at end of method
+    switch (state) {
+        case COLLISION: {
+        	/* Attempt retransmission */
+			if (tx_attempts != -1 && tx_attempts < 10) {
+				tx_attempts++;
+				tx_index = 0;					// read from beginning of buffer
+				tim3->ARR = HALF_BIT_PERIOD;	// return to normal functionality
+				tim3->CR1 |= (1<<0);			//
+			}
+			state = BUSY_HIGH;
+			tim2->ARR = IDLE_TIME;
+			break;
+        }
+        case BUSY_LOW: {
+        	state = BUSY_HIGH;
+        	tim2->ARR = IDLE_TIME;
+        	break;
+        }
+        case BUSY_HIGH: {
+			state = BUSY_LOW;
+			tim2->ARR = COLL_TIME;
+			break;
+        }
+        case IDLE: {
+        	state = BUSY_LOW;
+        	tim2->ARR = COLL_TIME;
+        	break;
+        }
+        default: {
+        	break;
+        }
+
+    }
+
 	// realign sampling timer to halfway through half-bit period
 	tim5->CNT = HALF_BIT_PERIOD / 2;
 
@@ -315,6 +352,13 @@ void TIM2_IRQHandler(void) {
 		state = IDLE;
 	} else {
 		state = COLLISION;
+		/* Stop transmission */
+		tim3->CR1 &= ~(1<<0);		// stop timer
+		gpioc->ODR |= (1<<PC11);	// reset Tx_data to 1
+		/* Calculate back-off duration */
+		int n = rand() % N_MAX + 1; // n is between 1 and N_MAX
+		int rand_time = ((double) n / N_MAX) * CPU_FREQ;
+		tim3->ARR = rand_time;  	// delay transmission interrupt's next call
 	}
 }
 
@@ -328,20 +372,11 @@ void TIM3_IRQHandler(void) {
 	// clear UIF pending bit
 	tim3->SR &= ~(1<<0);
 
-	/* Back off and retransmit? */
-	if (state == COLLISION) {
-		gpioc->ODR |= (1<<PC11);	// reset Tx_data to 1
-//		tim3->ARR = RANDOM TODO wait random time
-		tx_index = 0;				// read from beginning of buffer
-		return;
-	} else {
-		tim3->ARR = HALF_BIT_PERIOD;
-	}
-
 	/* End transmission? */
-	if (tx_buffer[tx_index / (2*8)] == '\0') {
+	if (tx_buffer[tx_index / (2*8)] == '\0') { // TODO make sure buffer has 0 at end!
 		tim3->CR1 &= ~(1<<0);		// stop timer
 		gpioc->ODR |= (1<<PC11);	// reset Tx_data to 1
+		tx_attempts = -1;			// finished message
 		return;
 	}
 
@@ -374,7 +409,7 @@ void TIM5_IRQHandler(void) {
 	tim5->SR &= ~(1<<0);
 
 	// when receiving every other half-bit...
-	if (rx_index % 2) {
+	if (rx_index % 2 == 1) {
 		// store second half-bit
 		char hb1 = gpioc->IDR & (1<<PC12);
 
