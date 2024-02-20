@@ -31,6 +31,8 @@ static unsigned char tx_buffer[TX_BUFFER_SIZE+1];
 static unsigned char rx_buffer[RX_BUFFER_SIZE+1];
 // first half-bit of pair received by TIM5_IRQHandler
 static char hb0;
+// number of attempts at transmitting a message (-1 if no message waiting)
+static char tx_attempts;
 
 // half-bits transmitted (increments once per TIM3_IRQHandler)
 static size_t tx_index;
