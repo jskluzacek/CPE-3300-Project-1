@@ -17,8 +17,10 @@
  * returns: none
  */
 static void console_help() {
-	printf("To send a sequence of characters:\n");
-	printf("Send (message to be sent)\n");
+	printf("To send a message:\n");
+	printf("Send (message)\n");
+	printf("To receive a message:\n");
+	printf("receive");
 }
 
 /**
@@ -48,14 +50,14 @@ void console_print_str(const char str[]) {
  * returns: none
  */
 void console_scan(void) {
-	char command[50];
-	unsigned char message[100];
+	char command[COMMAND_LEN];
+	unsigned char message[MESSAGE_LEN];
 	int ret_val;
-	char userinput[150];
+	char userinput[COMMAND_LEN + MESSAGE_LEN];
 
 	printf("> ");
 
-	fgets(userinput, 149, stdin);
+	fgets(userinput, COMMAND_LEN + MESSAGE_LEN - 1, stdin);
 
 	ret_val = sscanf(userinput, "%s %s", command, message);
 
@@ -64,6 +66,9 @@ void console_scan(void) {
 	}
 	else if (!strcmp(command, "send")) {
 		tx_string(message);
+	}
+	else if (!strcmp(command, "receive")) {
+		rx_string();
 	}
 	else {
 		printf("Unsupported command: %s\n", command);

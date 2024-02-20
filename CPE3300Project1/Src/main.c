@@ -20,10 +20,8 @@ int main(void)
 	init_usart2(57600, CPU_FREQ);
 
 
-
 	for(;;) {
-		rx_string();
-//		console_scan();
+		console_scan();
 	}
 
 	return 0;

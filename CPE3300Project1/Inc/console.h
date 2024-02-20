@@ -9,6 +9,10 @@
 #ifndef _console_h
 #define _console_h
 
+// Constants
+#define MESSAGE_LEN 255
+#define COMMAND_LEN
+
 // prototypes
 void console_scan(void);
 void console_print_char(char);
