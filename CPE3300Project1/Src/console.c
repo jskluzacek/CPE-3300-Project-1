@@ -65,10 +65,10 @@ void console_scan(void) {
 		console_help();
 	}
 	else if (!strcmp(command, "send")) {
-		tx_string(message);
+		tx_message(message);
 	}
 	else if (!strcmp(command, "receive")) {
-		rx_string();
+		rx_messages();
 	}
 	else {
 		printf("Unsupported command: %s\n", command);

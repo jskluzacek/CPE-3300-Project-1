@@ -23,11 +23,13 @@
 #define MSB 0x80	// most sig. bit of a byte
 
 /* Buffer Constraints */
-#define TX_BUFFER_SIZE 5 + 255 + 1 	// input string length
-#define RX_BUFFER_SIZE 5 + 255 + 1	// output string length
+#define MSG_SIZE	(5 + 255 + 1 + 1) // header + msg + tail + null
+#define TX_BUFFER_SIZE MSG_SIZE 	// input string length
+#define MAX_MESSAGES 10
+#define RX_BUFFER_SIZE MSG_SIZE * MAX_MESSAGES
 
 /* Transmission */
-#define TX_ATTEMPTS_MAX 10
+#define MAX_ATTEMPTS 10
 #define CRC_DIVISOR 0x107
 
 /* LED Config */

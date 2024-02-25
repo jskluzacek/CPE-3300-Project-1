@@ -22,6 +22,7 @@ int main(void)
 
 	for(;;) {
 		console_scan();
+		rx_messages();
 	}
 
 	return 0;
