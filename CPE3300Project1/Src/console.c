@@ -19,7 +19,7 @@
 static void console_help() {
 	printf("To send a message:\n");
 	printf("Send (message)\n");
-	printf("To receive a message:\n");
+	printf("To receive messages:\n");
 	printf("receive");
 }
 
