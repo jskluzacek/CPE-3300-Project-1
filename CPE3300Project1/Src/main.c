@@ -14,15 +14,15 @@
 int main(void)
 {
 	/*** INITIALIZE API's ***/
-	rx_init();
 	tx_init();
+	rx_init();
 	led_init();
 	init_usart2(57600, CPU_FREQ);
 
 
 	for(;;) {
 		console_scan();
-		rx_messages();
+//		rx_messages();
 	}
 
 	return 0;

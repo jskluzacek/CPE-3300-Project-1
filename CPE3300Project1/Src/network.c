@@ -48,6 +48,8 @@ static char rx_hb0;
 // multiple of MSG_SIZE
 static uint16_t rx_buffer_offset;
 
+static char error_state;
+
 /******************** Private Helper Methods ********************/
 
 /**
@@ -147,6 +149,7 @@ void tx_init(void) {
 	memset(tx_buffer, 0, TX_BUFFER_SIZE);
 	tx_index = 0;
 	tx_pending = 0;
+	gpioc->ODR |= (1<<PC12);
 
 	/* Start ISRs */
 	tim3->CR1 |= (1<<0);
@@ -184,7 +187,7 @@ void rx_init(void) {
 	nvic->ISER1 |= (1<<(TIM5n - 32));	// enable TIM5 interrupt in NVIC
 
 	/* Sampling ISR - reset */
-	memset(rx_buffer, 0, RX_BUFFER_SIZE);
+	memset(rx_buffer, '\0', RX_BUFFER_SIZE);
 	rx_buffer_offset = 0;
 	rx_hb0 = 1;
 	rx_index = 1;
@@ -198,8 +201,10 @@ void rx_init(void) {
 
 	/* Start ISRs */
 	nvic->ISER1 |= (1<<(EXTI15_10n - 32));	// start edge detection
-	tim2->CR1 |= (1<<0);					// start timeout timer
+//	tim2->CR1 |= (1<<0);					// start timeout timer
 	tim5->CR1 |= (1<<0);					// start sampling timer
+
+	error_state = 0;
 }
 
 /**
@@ -285,15 +290,19 @@ void tx_message(const char data[]) {
  */
 void rx_messages(void) {
 	/* Print Message Queue */
+	printf("error?:%d\n", (int)error_state);
+	error_state = 0;
 	for (int i = 0; i < MAX_MESSAGES; i++) {
 		// get next msg from rx_buffer using offset
-		char* msg_ptr = rx_buffer + (i * MSG_SIZE);
-		printf("Message %d: %s\n", i, msg_ptr);
-		verify_message(msg_ptr);
+		char* msg_ptr = (char*)(rx_buffer + (i * MSG_SIZE));
+		if (msg_ptr[0] != '\0') {
+			printf("Message %d: %s\n", i, msg_ptr);
+			verify_message(msg_ptr);
+		}
 	}
 
 	/* Sampling ISR - reset */
-	memset(rx_buffer, 0, RX_BUFFER_SIZE);
+	memset(rx_buffer, '\0', RX_BUFFER_SIZE);
 	rx_buffer_offset = 0;
 	rx_hb0 = 1;
 	rx_index = 1;
@@ -428,9 +437,16 @@ void TIM3_IRQHandler(void) {
 	}
 
 	// do nothing?
-	if (state == COLLISION || tx_pending == 0
-			|| tx_buffer[tx_index / (2*8)] == '\0') {
+	if (state == COLLISION || tx_pending == 0) {
 		gpioc->ODR |= (1<<PC11);	// idle at logic-1
+		return;
+	}
+
+	// end of message?
+	if (tx_buffer[tx_index / (2*8)] == '\0') {
+		gpioc->ODR |= (1<<PC11);	// idle at logic-1
+		tx_index = 0;
+		tx_pending = 0;
 		return;
 	}
 
@@ -478,26 +494,29 @@ void TIM5_IRQHandler(void) {
 	// every other half-bit...
 	if (rx_index % 2 == 1) {
 		// store second half-bit
-		char rx_hb1 = gpioc->IDR & (1<<PC12);
+		char rx_hb1 = (gpioc->IDR & (1<<PC12)) ? 1 : 0;
 
 		/* Decode Half-bit Pair */
 		if (rx_hb0 && !rx_hb1) {
 			// half-bits '10' become '0'
 			rx_buffer[rx_buffer_offset + rx_index / (2*8)] &= ~(MSB >> ((rx_index / 2) % 8));
+//			rx_buffer[rx_index / (2*8)] &= ~(MSB >> ((rx_index / 2) % 8));
 		} else if (!rx_hb0 && rx_hb1) {
 			// half bits '01' become '1'
 			rx_buffer[rx_buffer_offset + rx_index / (2*8)] |= (MSB >> ((rx_index / 2) % 8));
+//			rx_buffer[rx_index / (2*8)] |= (MSB >> ((rx_index / 2) % 8));
 		} else if (rx_hb0 && rx_hb1) {
+			error_state = 1;
 			return;
-			// TODO set error flag for debugging?
 			// TODO in idle state. do nothing?
 		} else if (!rx_hb0 && !rx_hb1) {
+			error_state = 2;
 			return;
 			// TODO in collision state. do nothing?
 		}
 	} else {
 		// store first half-bit
-		rx_hb0 = gpioc->IDR & (1<<PC12);
+		rx_hb0 = (gpioc->IDR & (1<<PC12)) ? 1 : 0;
 	}
 	rx_index++;
 }
