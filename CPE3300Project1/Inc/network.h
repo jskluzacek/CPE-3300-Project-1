@@ -10,11 +10,11 @@
 
 /* Protocol Timings */
 #define CPU_FREQ 	16000000UL 			// system clock speed is 16MHz
-#define DELAY_TIME 	0.00111 * CPU_FREQ	// max time between edges is 1.11ms
-#define COLL_TIME 	0.00110 * CPU_FREQ	// collision timeout is 1.10ms
-#define IDLE_TIME	0.00113 * CPU_FREQ 	// idle timeout is 1.13ms
-#define IDEAL_BIT_PERIOD 0.001 * CPU_FREQ		// period for each bit is 1ms
-#define HALF_BIT_PERIOD	IDEAL_BIT_PERIOD / 2	// transmitted half-bit period
+#define DELAY_TIME 	(0.00111 * CPU_FREQ)// max time between edges is 1.11ms
+#define COLL_TIME 	(0.00110 * CPU_FREQ)// collision timeout is 1.10ms
+#define IDLE_TIME	(0.00113 * CPU_FREQ)// idle timeout is 1.13ms
+#define IDEAL_BIT_PERIOD (0.001 * CPU_FREQ)		// period for each bit is 1ms
+#define HALF_BIT_PERIOD	(IDEAL_BIT_PERIOD / 2)	// transmitted half-bit period
 #define N_MAX	200	// n_max for random wait time calculation
 
 /* Bit Constants */
@@ -26,7 +26,7 @@
 #define MSG_SIZE	(5 + 255 + 1 + 1) // header + msg + tail + null
 #define TX_BUFFER_SIZE MSG_SIZE 	// input string length
 #define MAX_MESSAGES 10
-#define RX_BUFFER_SIZE MSG_SIZE * MAX_MESSAGES
+#define RX_BUFFER_SIZE (MSG_SIZE * MAX_MESSAGES)
 
 /* Transmission */
 #define MAX_ATTEMPTS 10
