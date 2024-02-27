@@ -91,15 +91,20 @@ char calc_crc(const char* data, char length) {
  * 	Prints errors if message is invalid, otherwise does nothing.
  * parameters:
  * 	msg - header, data, and tail to verify
- * returns: none
+ * returns: 1 if message is for us, 0 otherwise
  */
-void verify_message(const char* msg) {
+int verify_message(const char* msg) {
 	char preamble = msg[0];
 	char source_adr = msg[1];
 	char dest_adr = msg[2];
 	char length = msg[3];
 	char crc_flag = msg[4];
 	char crc_trailer = msg[5 + length];
+
+	// check if message is for us
+	if ((dest_adr != SRC_ADDR) || (dest_adr != BRC_ADDR)) {
+		return 0;
+	}
 
 	if (preamble != 0x55) {
 		// preamble should be 0x55
@@ -123,6 +128,8 @@ void verify_message(const char* msg) {
 			printf("Invalid CRC Trailer since CRC Flag is 0\n");
 		}
 	}
+
+	return 1;
 }
 
 /******************** Public Initializers ********************/
@@ -246,7 +253,7 @@ void led_init(void) {
  * 	data - string of up to 255 characters to encode and transmit
  * returns: none
  */
-void tx_message(const char data[]) {
+void tx_message(const char data[], char dest_addr) {
 	// wait for transmission to finish
 	while (!(tx_pending == 0 || tx_pending > MAX_ATTEMPTS)) {};
 
@@ -259,8 +266,8 @@ void tx_message(const char data[]) {
 	/* Append Header and Data */
 	size_t length = strlen(data);			// length of msg's data section
 	tx_buffer[0] = 0x55;					// 0: preamble
-	tx_buffer[1] = 0x01;					// 1: source_adr
-	tx_buffer[2] = 0x02;					// 2: dest_adr
+	tx_buffer[1] = SRC_ADDR;					// 1: source_adr
+	tx_buffer[2] = dest_addr;					// 2: dest_adr
 	tx_buffer[3] = (char)length;			// 3: length
 	tx_buffer[4] = 0x01;					// 4: crc_flag
 	strncpy((tx_buffer + 5), data, length);	// 5+: message
@@ -295,9 +302,14 @@ void rx_messages(void) {
 	for (int i = 0; i < MAX_MESSAGES; i++) {
 		// get next msg from rx_buffer using offset
 		char* msg_ptr = (char*)(rx_buffer + (i * MSG_SIZE));
+
+		// check if end of buffer
 		if (msg_ptr[0] != '\0') {
-			printf("Message %d: %s\n", i, msg_ptr);
-			verify_message(msg_ptr);
+
+			// check if message for us
+			if (verify_message(msg_ptr)) {
+				printf("Message %d: %s\n", i, msg_ptr);
+			}
 		}
 	}
 

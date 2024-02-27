@@ -17,6 +17,11 @@
 #define HALF_BIT_PERIOD	(IDEAL_BIT_PERIOD / 2)	// transmitted half-bit period
 #define N_MAX	200	// n_max for random wait time calculation
 
+/* Valid Addresses */
+#define SRC_ADDR 0x5C
+#define BRC_ADDR 0xFF
+#define INVALID_ADDR 0x00
+
 /* Bit Constants */
 #define PC11 11 	// Tx pin
 #define PC12 12 	// Rx Pin
@@ -56,7 +61,7 @@ typedef enum {
 	UNLOCKED
 } BUFFER_STATE;
 
-void tx_string(const char input[]);
+void tx_string(const char input[], char dest_addr);
 void rx_string();
 
 void tx_init(void);

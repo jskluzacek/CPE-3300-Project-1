@@ -52,20 +52,21 @@ void console_print_str(const char str[]) {
 void console_scan(void) {
 	char command[COMMAND_LEN];
 	unsigned char message[MESSAGE_LEN];
+	char dest_addr;
 	int ret_val;
-	char userinput[COMMAND_LEN + MESSAGE_LEN];
+	char userinput[COMMAND_LEN + MESSAGE_LEN + 1];
 
 	printf("> ");
 
-	fgets(userinput, COMMAND_LEN + MESSAGE_LEN - 1, stdin);
+	fgets(userinput, COMMAND_LEN + MESSAGE_LEN - 1 + 1, stdin);
 
-	ret_val = sscanf(userinput, "%s %s", command, message);
+	ret_val = sscanf(userinput, "%s %c %s", command, dest_addr, message);
 
 	if (!strcmp(command, "help")) {
 		console_help();
 	}
 	else if (!strcmp(command, "send")) {
-		tx_message(message);
+		tx_message(message, dest_addr);
 	}
 	else if (!strcmp(command, "receive")) {
 		rx_messages();
