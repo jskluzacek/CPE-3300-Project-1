@@ -93,7 +93,7 @@ char calc_crc(const char* data, char length) {
  * 	msg - header, data, and tail to verify
  * returns: 1 if message is for us, 0 otherwise
  */
-int verify_message(const char* msg) {
+int verify_message(const char msg[]) {
 	char preamble = msg[0];
 	char source_adr = msg[1];
 	char dest_adr = msg[2];
@@ -119,7 +119,7 @@ int verify_message(const char* msg) {
 		printf("Invalid CRC Flag\n");
 	}
 	if (crc_flag) {
-		if (calc_crc(msg + 5, length) != 0) {
+		if (calc_crc(msg + 5, (length + 1)) != 0) {
 			// calculated crc should match given crc
 			printf("CRC failed\n");
 		}
@@ -153,7 +153,7 @@ void tx_init(void) {
 	nvic->ISER0 |= (1<<TIM3n);			// enable TIM3 interrupt in NVIC
 
 	/* Transmit ISR - reset (no msg) */
-	memset(tx_buffer, 0, TX_BUFFER_SIZE);
+	memset(tx_buffer, 0, sizeof(tx_buffer));
 	tx_index = 0;
 	tx_pending = 0;
 	gpioc->ODR |= (1<<PC12);
@@ -194,10 +194,11 @@ void rx_init(void) {
 	nvic->ISER1 |= (1<<(TIM5n - 32));	// enable TIM5 interrupt in NVIC
 
 	/* Sampling ISR - reset */
-	memset(rx_buffer, '\0', RX_BUFFER_SIZE);
+	memset(rx_buffer, '\0', sizeof(rx_buffer));
 	rx_buffer_offset = 0;
 	rx_hb0 = 1;
 	rx_index = 1;
+	error_state = 0;
 
 	/* Update State */
 	if (gpioc->IDR & (1<<PC12)) {
@@ -210,8 +211,6 @@ void rx_init(void) {
 	nvic->ISER1 |= (1<<(EXTI15_10n - 32));	// start edge detection
 //	tim2->CR1 |= (1<<0);					// start timeout timer
 	tim5->CR1 |= (1<<0);					// start sampling timer
-
-	error_state = 0;
 }
 
 /**
@@ -299,12 +298,19 @@ void rx_messages(void) {
 	/* Print Message Queue */
 	printf("error?:%d\n", (int)error_state);
 	error_state = 0;
+
 	for (int i = 0; i < MAX_MESSAGES; i++) {
 		// get next msg from rx_buffer using offset
 		char* msg_ptr = (char*)(rx_buffer + (i * MSG_SIZE));
 
 		// check if end of buffer
 		if (msg_ptr[0] != '\0') {
+			printf("msg %d: ", i);
+			for (int i = 0; i < 5; i++) {
+				printf("%02x", msg_ptr[i]);
+			}
+			printf("_%.*s", msg_ptr[3], (msg_ptr + 5));
+			printf("_%02x\n", msg_ptr[5 + msg_ptr[3]]);
 
 			// check if message for us
 			if (verify_message(msg_ptr)) {
@@ -314,7 +320,7 @@ void rx_messages(void) {
 	}
 
 	/* Sampling ISR - reset */
-	memset(rx_buffer, '\0', RX_BUFFER_SIZE);
+	memset(rx_buffer, '\0', sizeof(rx_buffer));
 	rx_buffer_offset = 0;
 	rx_hb0 = 1;
 	rx_index = 1;
@@ -499,7 +505,7 @@ void TIM5_IRQHandler(void) {
 	}
 
 	// ignore data if rx_buffer is full
-	if (rx_buffer_offset >= (MAX_MESSAGES * MSG_SIZE)) {
+	if (rx_buffer_offset >= (MAX_MESSAGES * (MSG_SIZE))) {
 		return;
 	}
 
@@ -518,13 +524,13 @@ void TIM5_IRQHandler(void) {
 			rx_buffer[rx_buffer_offset + rx_index / (2*8)] |= (MSB >> ((rx_index / 2) % 8));
 //			rx_buffer[rx_index / (2*8)] |= (MSB >> ((rx_index / 2) % 8));
 		} else if (rx_hb0 && rx_hb1) {
+			// entering idle state, do nothing
 			error_state = 1;
 			return;
-			// TODO in idle state. do nothing?
 		} else if (!rx_hb0 && !rx_hb1) {
+			// entering collision state, do nothing
 			error_state = 2;
 			return;
-			// TODO in collision state. do nothing?
 		}
 	} else {
 		// store first half-bit
