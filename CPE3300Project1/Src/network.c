@@ -2,7 +2,7 @@
  * @assignment	   : CPE3300 Project 1
  * @file           : network.c
  * @author         : Team Edward - Kenny Gifford and Jerico Skluzacek
- * @date		   : 02/06/24
+ * @date		   : 02/27/24
  * @brief          : Channel Monitor and Signal Transmitter API
  *****************************************************************************/
 #include "network.h"
@@ -29,7 +29,7 @@ static STATE state;
 
 /* Transmit ISR Data */
 // un-encoded data to be transmitted on Tx_data (pin PC11)
-static char tx_buffer[TX_BUFFER_SIZE];
+static unsigned char tx_buffer[TX_BUFFER_SIZE];
 // half-bits transmitted (increments once per Transmit ISR call)
 static size_t tx_index;
 // number of attempts at transmitting tx_buffer (0 if no msg pending)
@@ -102,7 +102,7 @@ int verify_message(const char msg[]) {
 	char crc_trailer = msg[5 + length];
 
 	// check if message is for us
-	if ((dest_adr != SRC_ADDR) || (dest_adr != BRC_ADDR)) {
+	if ((dest_adr != SRC_ADDR) && (dest_adr != BRC_ADDR)) {
 		return 0;
 	}
 
@@ -146,11 +146,11 @@ void tx_init(void) {
 	gpioc->MODER |= (1<<(PC11 * 2));	// set PC11 to output mode
 	gpioc->MODER &= ~(1<<((PC11*2) + 1));
 
-	/* Transmit ISR Config. (TIM3) */
-	rcc->APB1ENR |= (1<<1);				// TIM3 = Bit 1
-	tim3->ARR = HALF_BIT_PERIOD;		// set TIM3 period
-	tim3->DIER |= (1<<0);				// enable TIM3 interrupt
-	nvic->ISER0 |= (1<<TIM3n);			// enable TIM3 interrupt in NVIC
+	/* Transmit ISR Config. (TIM2) */
+	rcc->APB1ENR |= (1<<0);				// TIM2 = Bit 0
+	tim2->ARR = HALF_BIT_PERIOD;		// set TIM2 period
+	tim2->DIER |= (1<<0);				// enable TIM2 interrupt
+	nvic->ISER0 |= (1<<TIM2n);			// enable TIM2 interrupt in NVIC
 
 	/* Transmit ISR - reset (no msg) */
 	memset(tx_buffer, 0, sizeof(tx_buffer));
@@ -159,7 +159,7 @@ void tx_init(void) {
 	gpioc->ODR |= (1<<PC12);
 
 	/* Start ISRs */
-	tim3->CR1 |= (1<<0);
+	tim2->CR1 |= (1<<0);
 }
 
 /**
@@ -181,11 +181,11 @@ void rx_init(void) {
 	exti->RTSR |= (1<<12);		// enable rising edge detection for EXTI12
 	exti->FTSR |= (1<<12);		// enable falling edge detection for EXTI12
 
-	/* Timeout ISR Config. (TIM2) */
-	rcc->APB1ENR |= (1<<0);				// TIM2 = Bit 0
-	tim2->ARR = COLL_TIME;				// set TIM2 period
-	tim2->DIER |= (1<<0);				// enable TIM2 interrupt
-	nvic->ISER0 |= (1<<TIM2n);			// enable TIM2 interrupt in NVIC
+	/* Timeout ISR Config. (TIM3) */
+	rcc->APB1ENR |= (1<<1);				// TIM3 = Bit 1
+	tim3->ARR = COLL_TIME;				// set TIM3 period
+	tim3->DIER |= (1<<0);				// enable TIM3 interrupt
+	nvic->ISER0 |= (1<<TIM3n);			// enable TIM3 interrupt in NVIC
 
 	/* Sampling ISR Config. (TIM5) */
 	rcc->APB1ENR |= (1<<3);				// TIM5 = Bit 3
@@ -252,21 +252,21 @@ void led_init(void) {
  * 	data - string of up to 255 characters to encode and transmit
  * returns: none
  */
-void tx_message(const char data[], char dest_addr) {
+void tx_message(const char data[], unsigned char dest_addr) {
 	// wait for transmission to finish
 	while (!(tx_pending == 0 || tx_pending > MAX_ATTEMPTS)) {};
 
 	// verify data
 	if (strlen(data) > 0xFF) {
-		console_print_str("User string is too long.\n");
+		printf("User string is too long.\n");
 		return;
 	}
 
 	/* Append Header and Data */
 	size_t length = strlen(data);			// length of msg's data section
 	tx_buffer[0] = 0x55;					// 0: preamble
-	tx_buffer[1] = SRC_ADDR;					// 1: source_adr
-	tx_buffer[2] = dest_addr;					// 2: dest_adr
+	tx_buffer[1] = SRC_ADDR;				// 1: source_adr
+	tx_buffer[2] = dest_addr;				// 2: dest_adr
 	tx_buffer[3] = (char)length;			// 3: length
 	tx_buffer[4] = 0x01;					// 4: crc_flag
 	strncpy((tx_buffer + 5), data, length);	// 5+: message
@@ -276,7 +276,8 @@ void tx_message(const char data[], char dest_addr) {
 	tx_buffer[TX_BUFFER_SIZE-1] = '\0';		// LSB: null terminator
 
 	/* Generate Random Delays */
-	srand(tx_buffer[5 + length]);	// TODO ideally based on time, but stm32 has no time
+	// TODO ideally based on time, but stm32 has no time
+	srand(tx_buffer[5 + length]);
 	for (int i = 0; i < MAX_ATTEMPTS; i++) {
 		int n = rand() % N_MAX + 1; // n is between 1 and N_MAX
 		tx_rand_arr_vals[i] = ((double) n / N_MAX) * CPU_FREQ;
@@ -303,19 +304,14 @@ void rx_messages(void) {
 		// get next msg from rx_buffer using offset
 		char* msg_ptr = (char*)(rx_buffer + (i * MSG_SIZE));
 
-		// check if end of buffer
-		if (msg_ptr[0] != '\0') {
+		// check if end of buffer / if dest address is correct
+		if (msg_ptr[0] != '\0' && verify_message(msg_ptr)) {
 			printf("msg %d: ", i);
 			for (int i = 0; i < 5; i++) {
-				printf("%02x", msg_ptr[i]);
+				printf("%02x_", msg_ptr[i]);
 			}
-			printf("_%.*s", msg_ptr[3], (msg_ptr + 5));
+			printf("%.*s", msg_ptr[3], (msg_ptr + 5));
 			printf("_%02x\n", msg_ptr[5 + msg_ptr[3]]);
-
-			// check if message for us
-			if (verify_message(msg_ptr)) {
-				printf("Message %d: %s\n", i, msg_ptr);
-			}
 		}
 	}
 
@@ -345,7 +341,7 @@ void EXTI15_10_IRQHandler(void) {
 
 	/* Timeout ISR - pause */
 	// (prevents race condition)
-	tim2->DIER &= ~(1<<0);
+	tim3->DIER &= ~(1<<0);
 
 	/* Edge ISR - pause */
 	// (debounce)
@@ -355,29 +351,30 @@ void EXTI15_10_IRQHandler(void) {
     switch (state) {
         case COLLISION: {
         	/* Transmit ISR - retransmit? */
-			if (tx_pending && tx_pending < MAX_ATTEMPTS) {
+			if (tx_pending != 0 && tx_pending < MAX_ATTEMPTS) {
 				/* Transmit ISR - prep. for retransmission */
-				tim3->ARR = tx_rand_arr_vals[(size_t)tx_pending];
+				tim2->ARR = tx_rand_arr_vals[(size_t)tx_pending];
+				tim2->CNT = 0;
 				tx_pending++;
 				tx_index = 0;
 			}
 			state = BUSY_HIGH;
-			tim2->ARR = IDLE_TIME;
+			tim3->ARR = IDLE_TIME;
 			break;
         }
         case BUSY_LOW: {
         	state = BUSY_HIGH;
-        	tim2->ARR = IDLE_TIME;
+        	tim3->ARR = IDLE_TIME;
         	break;
         }
         case BUSY_HIGH: {
 			state = BUSY_LOW;
-			tim2->ARR = COLL_TIME;
+			tim3->ARR = COLL_TIME;
 			break;
         }
         case IDLE: {
         	state = BUSY_LOW;
-        	tim2->ARR = COLL_TIME;
+        	tim3->ARR = COLL_TIME;
         	break;
         }
         default: {
@@ -389,16 +386,16 @@ void EXTI15_10_IRQHandler(void) {
 	tim5->CNT = HALF_BIT_PERIOD / 2;
 
 	/* Timeout ISR - reset and resume/start */
-	tim2->CNT = 0;
-	tim2->DIER |= (1<<0);
-	tim2->CR1 |= (1<<0);
+	tim3->CNT = 0;
+	tim3->DIER |= (1<<0);
+	tim3->CR1 |= (1<<0);
 
 	/* Edge ISR - resume */
 	nvic->ISER1 |= (1<<(EXTI15_10n - 32));	// start edge detection
 }
 
 /**
- * TIM2_IRQHandler: TIMEOUT
+ * TIM3_IRQHandler: TIMEOUT
  * 	Handles Rx_data (PC12) timeouts and state change to IDLE/COLLISION.
  * 	Disables itself to prevent redundant read of IDLE/COLLISION state.
  * race conditions: (by priority)
@@ -407,9 +404,9 @@ void EXTI15_10_IRQHandler(void) {
  * 	self - IRQ will not occur if runtime is less than COLL_TIME/IDLE_TIME.
  * 	others - other ISRs do not affect state, and can be ignored.
  */
-void TIM2_IRQHandler(void) {
+void TIM3_IRQHandler(void) {
 	// clear UIF pending bit
-	tim2->SR &= ~(1<<0);
+	tim3->SR &= ~(1<<0);
 
 	/* Edge ISR - pause */
 	// (prevents race condition)
@@ -430,14 +427,14 @@ void TIM2_IRQHandler(void) {
 
 	/* Timeout ISR - stop */
 	// (prevents redundant calls)
-	tim2->CR1 &= ~(1<<0);
+	tim3->CR1 &= ~(1<<0);
 
 	/* Edge ISR - resume */
 	nvic->ISER1 |= (1<<(EXTI15_10n - 32));	// start edge detection
 }
 
 /**
- * TIM3_IRQHandler: TRANSMIT
+ * TIM2_IRQHandler: TRANSMIT
  * 	Encodes tx_buffer and writes half-bits every HALF_BIT_PERIOD,
  * 	 	over Tx_data (PC11).
  *	Does nothing in COLLISION state or if there is nothing to transmit.
@@ -445,13 +442,13 @@ void TIM2_IRQHandler(void) {
  * 	self - IRQ will not occur if runtime is less than HALF_BIT_PERIOD.
  * 	others - this ISR is simple and should not be affected by overlapping ISRs.
  */
-void TIM3_IRQHandler(void) {
+void TIM2_IRQHandler(void) {
 	// clear UIF pending bit
-	tim3->SR &= ~(1<<0);
+	tim2->SR &= ~(1<<0);
 
 	// reset after random delay
-	if (tim3->ARR != HALF_BIT_PERIOD) {
-		tim3->ARR = HALF_BIT_PERIOD;
+	if (tim2->ARR != HALF_BIT_PERIOD) {
+		tim2->ARR = HALF_BIT_PERIOD;
 	}
 
 	// do nothing?

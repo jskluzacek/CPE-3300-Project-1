@@ -2,7 +2,7 @@
  * @assignment	   : CPE3300 Project 1
  * @file           : network.h
  * @author         : Team Edward - Kenny Gifford and Jerico Skluzacek
- * @date		   : 02/06/24
+ * @date		   : 02/27/24
  * @brief          : Channel Monitor and Signal Transmitter Header
  *****************************************************************************/
 #ifndef NETWORK_H_
@@ -23,7 +23,7 @@
 #define INVALID_ADDR 0x00
 
 /* Bit Constants */
-#define PC11 11 	// Tx pin
+#define PC11 11 	// Tx pin6
 #define PC12 12 	// Rx Pin
 #define MSB 0x80	// most sig. bit of a byte
 

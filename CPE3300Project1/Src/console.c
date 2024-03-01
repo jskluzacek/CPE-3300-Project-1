@@ -2,11 +2,12 @@
  * @assignment	   : CPE3300 Project 1
  * @file           : console.c
  * @author         : Team Edward - Kenny Gifford and Jerico Skluzacek
- * @date		   : 02/04/24
+ * @date		   : 02/27/24
  * @brief          : API to retrieve input from USART console
  *****************************************************************************/
 #include <stdio.h>
 #include <string.h>
+#include <stdlib.h>
 #include "console.h"
 #include "network.h"
 
@@ -18,7 +19,8 @@
  */
 static void console_help() {
 	printf("To send a message:\n");
-	printf("Send (message)\n");
+	printf("send (src_adr) (message)\n");
+	printf("*src_adr in DECIMAL form...\n");
 	printf("To receive messages:\n");
 	printf("receive");
 }
@@ -51,8 +53,8 @@ void console_print_str(const char str[]) {
  */
 void console_scan(void) {
 	char command[COMMAND_LEN];
-	unsigned char message[MESSAGE_LEN];
-	char dest_addr;
+	unsigned char message[MESSAGE_LEN + 1];
+	char dest_addr[3 + 1];
 	int ret_val;
 	char userinput[COMMAND_LEN + MESSAGE_LEN + 1];
 
@@ -60,13 +62,13 @@ void console_scan(void) {
 
 	fgets(userinput, COMMAND_LEN + MESSAGE_LEN - 1 + 1, stdin);
 
-	ret_val = sscanf(userinput, "%s %c %s", command, dest_addr, message);
+	ret_val = sscanf(userinput, "%s %s %s", command, dest_addr, message);
 
 	if (!strcmp(command, "help")) {
 		console_help();
 	}
 	else if (!strcmp(command, "send")) {
-		tx_message(message, dest_addr);
+		tx_message(message, atoi(dest_addr));
 	}
 	else if (!strcmp(command, "receive")) {
 		rx_messages();

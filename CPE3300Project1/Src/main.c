@@ -2,7 +2,7 @@
  * @assignment : CPE3300 Project 1
  * @file       : main.c
  * @author     : Team Edward - Kenny Gifford and Jerico Skluzacek
- * @date	   : 02/06/24
+ * @date	   : 02/27/24
  * @brief      : Monitors Rx_data pin and reflects state on LEDs, and transmits
  * 					user input from USART terminal onto Tx_data pin.
  *****************************************************************************/
@@ -22,7 +22,6 @@ int main(void)
 
 	for(;;) {
 		console_scan();
-//		rx_messages();
 	}
 
 	return 0;
